@@ -2,10 +2,11 @@ import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip,
   Legend, ResponsiveContainer,
 } from 'recharts'
+import { formatCurrency } from '../services/currencyService'
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#f97316', '#6b7280']
 
-export default function StatisticsChart({ stats }) {
+export default function StatisticsChart({ stats, currency = 'EUR' }) {
   if (!stats) return null
 
   const categoryData = Object.entries(stats.byCategory || {}).map(([name, value]) => ({
@@ -23,21 +24,21 @@ export default function StatisticsChart({ stats }) {
   return (
     <div className="space-y-8">
       <div className="grid grid-cols-2 gap-4">
-        <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
-          <p className="text-sm text-gray-500">Total Spent</p>
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 text-center">
+          <p className="text-sm text-gray-500 dark:text-gray-300">Total Spent</p>
           <p className="text-3xl font-bold text-blue-600">
-            €{parseFloat(stats.totalAmount || 0).toFixed(2)}
+            {formatCurrency(stats.totalAmount || 0, currency)}
           </p>
         </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
-          <p className="text-sm text-gray-500">Total Expenses</p>
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 text-center">
+          <p className="text-sm text-gray-500 dark:text-gray-300">Total Expenses</p>
           <p className="text-3xl font-bold text-green-600">{stats.totalCount || 0}</p>
         </div>
       </div>
 
       {categoryData.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Spending by Category</h3>
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Spending by Category</h3>
           <ResponsiveContainer width="100%" height={280}>
             <PieChart>
               <Pie
@@ -52,22 +53,22 @@ export default function StatisticsChart({ stats }) {
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip formatter={(value) => `€${value.toFixed(2)}`} />
+              <Tooltip formatter={(value) => formatCurrency(value, currency)} />
             </PieChart>
           </ResponsiveContainer>
         </div>
       )}
 
       {monthData.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Monthly Spending</h3>
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Monthly Spending</h3>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={monthData}>
               <XAxis dataKey="name" />
               <YAxis />
-              <Tooltip formatter={(value) => `€${value.toFixed(2)}`} />
+              <Tooltip formatter={(value) => formatCurrency(value, currency)} />
               <Legend />
-              <Bar dataKey="amount" fill="#3b82f6" name="Amount (€)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="amount" fill="#3b82f6" name={`Amount (${currency})`} radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

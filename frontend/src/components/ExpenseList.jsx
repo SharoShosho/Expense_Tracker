@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { formatCurrency } from '../services/currencyService'
 
 const CATEGORY_COLORS = {
   Food: 'bg-green-100 text-green-800',
@@ -11,7 +12,7 @@ const CATEGORY_COLORS = {
   Other: 'bg-gray-100 text-gray-800',
 }
 
-export default function ExpenseList({ expenses, onEdit, onDelete }) {
+export default function ExpenseList({ expenses, onEdit, onDelete, currency = 'EUR' }) {
   const [deletingId, setDeletingId] = useState(null)
 
   const handleDelete = async (id) => {
@@ -26,7 +27,7 @@ export default function ExpenseList({ expenses, onEdit, onDelete }) {
 
   if (expenses.length === 0) {
     return (
-      <div className="text-center py-12 text-gray-400">
+      <div className="text-center py-12 text-gray-400 dark:text-gray-500">
         <p className="text-4xl mb-3">📋</p>
         <p className="text-lg">No expenses yet. Add your first one!</p>
       </div>
@@ -38,14 +39,14 @@ export default function ExpenseList({ expenses, onEdit, onDelete }) {
       {expenses.map((expense) => (
         <div
           key={expense.id}
-          className="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-between hover:shadow-sm transition"
+          className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 flex items-center justify-between hover:shadow-sm transition"
         >
           <div className="flex items-center gap-4">
             <div className="flex flex-col">
-              <span className="font-semibold text-gray-900">
-                €{parseFloat(expense.amount).toFixed(2)}
+              <span className="font-semibold text-gray-900 dark:text-gray-100">
+                {formatCurrency(expense.amount, currency)}
               </span>
-              <span className="text-xs text-gray-400">{expense.date}</span>
+              <span className="text-xs text-gray-400 dark:text-gray-500">{expense.date}</span>
             </div>
             <div>
               <span
@@ -56,7 +57,7 @@ export default function ExpenseList({ expenses, onEdit, onDelete }) {
                 {expense.category}
               </span>
               {expense.description && (
-                <p className="text-sm text-gray-600 mt-1">{expense.description}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{expense.description}</p>
               )}
             </div>
           </div>
