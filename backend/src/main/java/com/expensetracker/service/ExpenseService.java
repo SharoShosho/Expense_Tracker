@@ -12,7 +12,10 @@ import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 public class ExpenseService {
@@ -32,39 +35,50 @@ public class ExpenseService {
 
     public List<Expense> getExpenses(String userId, String category, String search,
                                       LocalDate startDate, LocalDate endDate) {
-        List<Expense> expenses = expenseRepository.findByUserId(userId);
+        Predicate<Expense> combinedFilter = Stream.of(
+                        categoryFilter(category),
+                        searchFilter(search),
+                        startDateFilter(startDate),
+                        endDateFilter(endDate)
+                )
+                .flatMap(Optional::stream)
+                .reduce(expense -> true, Predicate::and);
 
-        if (category != null && !category.isBlank()) {
-            expenses = expenses.stream()
-                    .filter(e -> e.getCategory().equalsIgnoreCase(category))
-                    .collect(Collectors.toList());
-        }
-        if (search != null && !search.isBlank()) {
-            String lowerSearch = search.toLowerCase();
-            expenses = expenses.stream()
-                    .filter(e -> e.getDescription() != null && e.getDescription().toLowerCase().contains(lowerSearch))
-                    .collect(Collectors.toList());
-        }
-        if (startDate != null) {
-            expenses = expenses.stream()
-                    .filter(e -> !e.getDate().isBefore(startDate))
-                    .collect(Collectors.toList());
-        }
-        if (endDate != null) {
-            expenses = expenses.stream()
-                    .filter(e -> !e.getDate().isAfter(endDate))
-                    .collect(Collectors.toList());
-        }
-        return expenses;
+        return expenseRepository.findByUserId(userId).stream()
+                .filter(combinedFilter)
+                .collect(Collectors.toList());
     }
 
     public Expense getExpense(String userId, String id) {
-        Expense expense = expenseRepository.findById(id)
+        return expenseRepository.findById(id)
+                .filter(expense -> expense.getUserId().equals(userId))
                 .orElseThrow(() -> new ResourceNotFoundException("Expense", id));
-        if (!expense.getUserId().equals(userId)) {
-            throw new ResourceNotFoundException("Expense", id);
-        }
-        return expense;
+    }
+
+    private Optional<Predicate<Expense>> categoryFilter(String category) {
+        return Optional.ofNullable(category)
+                .map(String::trim)
+                .filter(value -> !value.isBlank())
+                .map(value -> expense -> expense.getCategory().equalsIgnoreCase(value));
+    }
+
+    private Optional<Predicate<Expense>> searchFilter(String search) {
+        return Optional.ofNullable(search)
+                .map(String::trim)
+                .filter(value -> !value.isBlank())
+                .map(String::toLowerCase)
+                .map(lowerSearch -> expense -> expense.getDescription() != null
+                        && expense.getDescription().toLowerCase().contains(lowerSearch));
+    }
+
+    private Optional<Predicate<Expense>> startDateFilter(LocalDate startDate) {
+        return Optional.ofNullable(startDate)
+                .map(value -> expense -> !expense.getDate().isBefore(value));
+    }
+
+    private Optional<Predicate<Expense>> endDateFilter(LocalDate endDate) {
+        return Optional.ofNullable(endDate)
+                .map(value -> expense -> !expense.getDate().isAfter(value));
     }
 
     public Expense updateExpense(String userId, String id, ExpenseDTO dto) {

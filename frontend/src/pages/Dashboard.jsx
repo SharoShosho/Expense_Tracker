@@ -6,6 +6,19 @@ import api from '../services/api'
 
 const CATEGORIES = ['All', 'Food', 'Transport', 'Entertainment', 'Health', 'Housing', 'Shopping', 'Utilities', 'Other']
 
+const buildExpenseQueryParams = (activeFilters) => {
+  const rawParams = {
+    category: activeFilters.category && activeFilters.category !== 'All' ? activeFilters.category : '',
+    search: activeFilters.search,
+    startDate: activeFilters.startDate,
+    endDate: activeFilters.endDate,
+  }
+
+  return Object.fromEntries(
+    Object.entries(rawParams).filter(([, value]) => Boolean(value))
+  )
+}
+
 export default function Dashboard() {
   const [expenses, setExpenses] = useState([])
   const [loading, setLoading] = useState(true)
@@ -18,11 +31,7 @@ export default function Dashboard() {
     setLoading(true)
     setError('')
     try {
-      const params = {}
-      if (filters.category && filters.category !== 'All') params.category = filters.category
-      if (filters.search) params.search = filters.search
-      if (filters.startDate) params.startDate = filters.startDate
-      if (filters.endDate) params.endDate = filters.endDate
+      const params = buildExpenseQueryParams(filters)
 
       const response = await api.get('/expenses', { params })
       setExpenses(response.data)

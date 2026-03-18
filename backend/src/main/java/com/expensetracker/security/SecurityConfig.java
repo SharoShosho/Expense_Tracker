@@ -31,9 +31,6 @@ public class SecurityConfig {
     @Autowired
     private UserRepository userRepository;
 
-    @Autowired
-    private JwtAuthenticationFilter jwtAuthenticationFilter;
-
     @Bean
     public UserDetailsService userDetailsService() {
         return username -> userRepository.findByEmail(username)
@@ -64,7 +61,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
         http
                 // CSRF is disabled because this is a stateless REST API authenticated via
                 // JWT Bearer tokens in the Authorization header. Browsers do not automatically
