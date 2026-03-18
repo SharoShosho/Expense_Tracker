@@ -4,12 +4,10 @@ import ExpenseList from '../components/ExpenseList'
 import ExpenseForm from '../components/ExpenseForm'
 import api from '../services/api'
 import {
-  DEFAULT_CURRENCY,
   formatCurrency,
-  getPreferredCurrency,
-  onCurrencyChange,
 } from '../services/currencyService'
-import { convertAmount, getExchangeRate } from '../services/exchangeRateService'
+import { useCurrencyConversion } from '../hooks/useCurrencyConversion'
+import { getErrorMessage } from '../services/errorService'
 
 const CATEGORIES = ['All', 'Food', 'Transport', 'Entertainment', 'Health', 'Housing', 'Shopping', 'Utilities', 'Other']
 
@@ -33,9 +31,14 @@ export default function Dashboard() {
   const [editingExpense, setEditingExpense] = useState(null)
   const [filters, setFilters] = useState({ category: '', search: '', startDate: '', endDate: '' })
   const [error, setError] = useState('')
-  const [currency, setCurrency] = useState(getPreferredCurrency())
-  const [exchangeRate, setExchangeRate] = useState(1)
-  const [rateWarning, setRateWarning] = useState('')
+  const {
+    currency,
+    rateWarning,
+    convertFromBaseCurrency,
+    convertToBaseCurrency,
+  } = useCurrencyConversion({
+    warningMessage: 'Could not load live exchange rate. Amounts are shown in EUR values.',
+  })
 
   const fetchExpenses = useCallback(async () => {
     setLoading(true)
@@ -45,8 +48,8 @@ export default function Dashboard() {
 
       const response = await api.get('/expenses', { params })
       setExpenses(response.data)
-    } catch {
-      setError('Failed to load expenses')
+    } catch (err) {
+      setError(getErrorMessage(err, 'Failed to load expenses'))
     } finally {
       setLoading(false)
     }
@@ -56,66 +59,46 @@ export default function Dashboard() {
     fetchExpenses()
   }, [fetchExpenses])
 
-  useEffect(() => onCurrencyChange(setCurrency), [])
-
-  useEffect(() => {
-    let mounted = true
-
-    const loadExchangeRate = async () => {
-      try {
-        const nextRate = await getExchangeRate(DEFAULT_CURRENCY, currency)
-        if (mounted) {
-          setExchangeRate(nextRate)
-          setRateWarning('')
-        }
-      } catch {
-        if (mounted) {
-          setExchangeRate(1)
-          setRateWarning('Could not load live exchange rate. Amounts are shown in EUR values.')
-        }
-      }
-    }
-
-    loadExchangeRate()
-    return () => {
-      mounted = false
-    }
-  }, [currency])
-
   const displayExpenses = useMemo(
     () => expenses.map((expense) => ({
       ...expense,
-      amount: convertAmount(expense.amount, exchangeRate),
+      amount: convertFromBaseCurrency(expense.amount),
     })),
-    [expenses, exchangeRate]
+    [expenses, convertFromBaseCurrency]
   )
 
-  const convertAmountToStorageCurrency = useCallback(async (amount) => {
-    if (currency === DEFAULT_CURRENCY) {
-      return Number(amount)
-    }
-
-    const latestRate = await getExchangeRate(DEFAULT_CURRENCY, currency)
-    return convertAmount(amount, 1 / latestRate)
-  }, [currency])
-
   const handleCreate = async (data) => {
-    const normalizedAmount = await convertAmountToStorageCurrency(data.amount)
-    await api.post('/expenses', { ...data, amount: normalizedAmount })
-    setShowForm(false)
-    fetchExpenses()
+    try {
+      const normalizedAmount = await convertToBaseCurrency(data.amount)
+      await api.post('/expenses', { ...data, amount: normalizedAmount })
+      setShowForm(false)
+      fetchExpenses()
+    } catch (err) {
+      setError(getErrorMessage(err, 'Failed to save expense'))
+      throw err
+    }
   }
 
   const handleUpdate = async (data) => {
-    const normalizedAmount = await convertAmountToStorageCurrency(data.amount)
-    await api.put(`/expenses/${editingExpense.id}`, { ...data, amount: normalizedAmount })
-    setEditingExpense(null)
-    fetchExpenses()
+    try {
+      const normalizedAmount = await convertToBaseCurrency(data.amount)
+      await api.put(`/expenses/${editingExpense.id}`, { ...data, amount: normalizedAmount })
+      setEditingExpense(null)
+      fetchExpenses()
+    } catch (err) {
+      setError(getErrorMessage(err, 'Failed to save expense'))
+      throw err
+    }
   }
 
   const handleDelete = async (id) => {
-    await api.delete(`/expenses/${id}`)
-    fetchExpenses()
+    try {
+      await api.delete(`/expenses/${id}`)
+      fetchExpenses()
+    } catch (err) {
+      setError(getErrorMessage(err, 'Failed to delete expense'))
+      throw err
+    }
   }
 
   const totalAmount = displayExpenses.reduce((sum, e) => sum + Number(e.amount || 0), 0)

@@ -51,7 +51,7 @@ public class ExpenseService {
 
     public Expense getExpense(String userId, String id) {
         return expenseRepository.findById(id)
-                .filter(expense -> expense.getUserId().equals(userId))
+                .filter(expense -> userId.equals(expense.getUserId()))
                 .orElseThrow(() -> new ResourceNotFoundException("Expense", id));
     }
 
@@ -59,7 +59,7 @@ public class ExpenseService {
         return Optional.ofNullable(category)
                 .map(String::trim)
                 .filter(value -> !value.isBlank())
-                .map(value -> expense -> expense.getCategory().equalsIgnoreCase(value));
+                .map(value -> expense -> value.equalsIgnoreCase(safeCategory(expense)));
     }
 
     private Optional<Predicate<Expense>> searchFilter(String search) {
@@ -67,18 +67,21 @@ public class ExpenseService {
                 .map(String::trim)
                 .filter(value -> !value.isBlank())
                 .map(String::toLowerCase)
-                .map(lowerSearch -> expense -> expense.getDescription() != null
-                        && expense.getDescription().toLowerCase().contains(lowerSearch));
+                .map(lowerSearch -> expense -> safeDescription(expense).toLowerCase().contains(lowerSearch));
     }
 
     private Optional<Predicate<Expense>> startDateFilter(LocalDate startDate) {
         return Optional.ofNullable(startDate)
-                .map(value -> expense -> !expense.getDate().isBefore(value));
+                .map(value -> expense -> Optional.ofNullable(expense.getDate())
+                        .map(date -> !date.isBefore(value))
+                        .orElse(false));
     }
 
     private Optional<Predicate<Expense>> endDateFilter(LocalDate endDate) {
         return Optional.ofNullable(endDate)
-                .map(value -> expense -> !expense.getDate().isAfter(value));
+                .map(value -> expense -> Optional.ofNullable(expense.getDate())
+                        .map(date -> !date.isAfter(value))
+                        .orElse(false));
     }
 
     public Expense updateExpense(String userId, String id, ExpenseDTO dto) {
@@ -98,17 +101,22 @@ public class ExpenseService {
     public Map<String, Object> getStatistics(String userId) {
         List<Expense> expenses = expenseRepository.findByUserId(userId);
 
-        BigDecimal totalAmount = expenses.stream()
+        List<Expense> validExpenses = expenses.stream()
+                .filter(expense -> expense.getAmount() != null)
+                .filter(expense -> expense.getDate() != null)
+                .collect(Collectors.toList());
+
+        BigDecimal totalAmount = validExpenses.stream()
                 .map(Expense::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        Map<String, BigDecimal> byCategory = expenses.stream()
+        Map<String, BigDecimal> byCategory = validExpenses.stream()
                 .collect(Collectors.groupingBy(
-                        Expense::getCategory,
+                        expense -> Optional.ofNullable(expense.getCategory()).orElse("Uncategorized"),
                         Collectors.reducing(BigDecimal.ZERO, Expense::getAmount, BigDecimal::add)
                 ));
 
-        Map<String, BigDecimal> byMonth = expenses.stream()
+        Map<String, BigDecimal> byMonth = validExpenses.stream()
                 .collect(Collectors.groupingBy(
                         e -> e.getDate().getYear() + "-" + String.format("%02d", e.getDate().getMonthValue()),
                         Collectors.reducing(BigDecimal.ZERO, Expense::getAmount, BigDecimal::add)
@@ -120,5 +128,17 @@ public class ExpenseService {
         stats.put("byCategory", byCategory);
         stats.put("byMonth", byMonth);
         return stats;
+    }
+
+    private String safeCategory(Expense expense) {
+        return Optional.ofNullable(expense)
+                .map(Expense::getCategory)
+                .orElse("");
+    }
+
+    private String safeDescription(Expense expense) {
+        return Optional.ofNullable(expense)
+                .map(Expense::getDescription)
+                .orElse("");
     }
 }

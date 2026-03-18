@@ -2,24 +2,28 @@ import { useState, useEffect, useMemo } from 'react'
 import Navigation from '../components/Navigation'
 import StatisticsChart from '../components/StatisticsChart'
 import api from '../services/api'
-import { DEFAULT_CURRENCY, getPreferredCurrency, onCurrencyChange } from '../services/currencyService'
-import { convertAmount, getExchangeRate } from '../services/exchangeRateService'
+import { useCurrencyConversion } from '../hooks/useCurrencyConversion'
+import { getErrorMessage } from '../services/errorService'
 
 export default function StatisticsPage() {
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [currency, setCurrency] = useState(getPreferredCurrency())
-  const [exchangeRate, setExchangeRate] = useState(1)
-  const [rateWarning, setRateWarning] = useState('')
+  const {
+    currency,
+    rateWarning,
+    convertFromBaseCurrency,
+  } = useCurrencyConversion({
+    warningMessage: 'Could not load live exchange rate. Statistics are shown in EUR values.',
+  })
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
         const response = await api.get('/statistics')
         setStats(response.data)
-      } catch {
-        setError('Failed to load statistics')
+      } catch (err) {
+        setError(getErrorMessage(err, 'Failed to load statistics'))
       } finally {
         setLoading(false)
       }
@@ -27,48 +31,22 @@ export default function StatisticsPage() {
     fetchStats()
   }, [])
 
-  useEffect(() => onCurrencyChange(setCurrency), [])
-
-  useEffect(() => {
-    let mounted = true
-
-    const loadExchangeRate = async () => {
-      try {
-        const nextRate = await getExchangeRate(DEFAULT_CURRENCY, currency)
-        if (mounted) {
-          setExchangeRate(nextRate)
-          setRateWarning('')
-        }
-      } catch {
-        if (mounted) {
-          setExchangeRate(1)
-          setRateWarning('Could not load live exchange rate. Statistics are shown in EUR values.')
-        }
-      }
-    }
-
-    loadExchangeRate()
-    return () => {
-      mounted = false
-    }
-  }, [currency])
-
   const convertedStats = useMemo(() => {
     if (!stats) {
       return null
     }
 
     const convertMapValues = (input) => Object.fromEntries(
-      Object.entries(input || {}).map(([key, value]) => [key, convertAmount(value, exchangeRate)])
+      Object.entries(input || {}).map(([key, value]) => [key, convertFromBaseCurrency(value)])
     )
 
     return {
       ...stats,
-      totalAmount: convertAmount(stats.totalAmount, exchangeRate),
+      totalAmount: convertFromBaseCurrency(stats.totalAmount),
       byCategory: convertMapValues(stats.byCategory),
       byMonth: convertMapValues(stats.byMonth),
     }
-  }, [stats, exchangeRate])
+  }, [stats, convertFromBaseCurrency])
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">

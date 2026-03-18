@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { authService } from '../services/authService'
 import ThemeToggle from '../components/ThemeToggle'
+import { getErrorMessage } from '../services/errorService'
+import { validateRegistration } from '../validation/validators'
 
 export default function RegisterPage() {
   const navigate = useNavigate()
@@ -17,12 +19,9 @@ export default function RegisterPage() {
     e.preventDefault()
     setError('')
 
-    if (form.password !== form.confirmPassword) {
-      setError('Passwords do not match')
-      return
-    }
-    if (form.password.length < 6) {
-      setError('Password must be at least 6 characters')
+    const validationError = validateRegistration(form)
+    if (validationError) {
+      setError(validationError)
       return
     }
 
@@ -31,7 +30,7 @@ export default function RegisterPage() {
       await authService.register(form.email, form.password)
       navigate('/dashboard')
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed. Please try again.')
+      setError(getErrorMessage(err, 'Registration failed. Please try again.'))
     } finally {
       setLoading(false)
     }

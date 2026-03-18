@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { getErrorMessage } from '../services/errorService'
+import { validateExpenseAmount } from '../validation/validators'
 
 const CATEGORIES = ['Food', 'Transport', 'Entertainment', 'Health', 'Housing', 'Shopping', 'Utilities', 'Other']
 
@@ -20,8 +22,9 @@ export default function ExpenseForm({ onSubmit, onCancel, initialData, currency 
     e.preventDefault()
     setError('')
 
-    if (!form.amount || isNaN(parseFloat(form.amount)) || parseFloat(form.amount) <= 0) {
-      setError('Please enter a valid amount greater than 0')
+    const validationError = validateExpenseAmount(form.amount)
+    if (validationError) {
+      setError(validationError)
       return
     }
 
@@ -29,10 +32,10 @@ export default function ExpenseForm({ onSubmit, onCancel, initialData, currency 
     try {
       await onSubmit({
         ...form,
-        amount: parseFloat(form.amount),
+        amount: Number(form.amount),
       })
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to save expense')
+      setError(getErrorMessage(err, 'Failed to save expense'))
     } finally {
       setLoading(false)
     }

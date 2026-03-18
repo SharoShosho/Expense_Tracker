@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { authService } from '../services/authService'
 import ThemeToggle from '../components/ThemeToggle'
+import { getErrorMessage } from '../services/errorService'
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -21,7 +22,7 @@ export default function LoginPage() {
       await authService.login(form.email, form.password)
       navigate('/dashboard')
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed. Please check your credentials.')
+      setError(getErrorMessage(err, 'Login failed. Please check your credentials.'))
     } finally {
       setLoading(false)
     }

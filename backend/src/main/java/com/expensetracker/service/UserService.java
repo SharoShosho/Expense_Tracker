@@ -2,6 +2,7 @@ package com.expensetracker.service;
 
 import com.expensetracker.dto.LoginRequest;
 import com.expensetracker.dto.RegisterRequest;
+import com.expensetracker.exception.ResourceNotFoundException;
 import com.expensetracker.model.User;
 import com.expensetracker.repository.UserRepository;
 import com.expensetracker.security.JwtTokenProvider;
@@ -43,12 +44,7 @@ public class UserService {
         User savedUser = userRepository.save(user);
 
         String token = jwtTokenProvider.generateToken(savedUser.getEmail());
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("token", token);
-        response.put("email", savedUser.getEmail());
-        response.put("id", savedUser.getId());
-        return response;
+        return buildAuthResponse(savedUser, token);
     }
 
     public Map<String, Object> login(LoginRequest request) {
@@ -58,11 +54,19 @@ public class UserService {
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        User user = findUserByEmail(request.getEmail());
 
         String token = jwtTokenProvider.generateToken(user.getEmail());
 
+        return buildAuthResponse(user, token);
+    }
+
+    private User findUserByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User", email));
+    }
+
+    private Map<String, Object> buildAuthResponse(User user, String token) {
         Map<String, Object> response = new HashMap<>();
         response.put("token", token);
         response.put("email", user.getEmail());
