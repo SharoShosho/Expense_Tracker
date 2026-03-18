@@ -1,13 +1,15 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import Navigation from '../components/Navigation'
 import ExpenseList from '../components/ExpenseList'
 import ExpenseForm from '../components/ExpenseForm'
 import api from '../services/api'
 import {
+  DEFAULT_CURRENCY,
   formatCurrency,
   getPreferredCurrency,
   onCurrencyChange,
 } from '../services/currencyService'
+import { convertAmount, getExchangeRate } from '../services/exchangeRateService'
 
 const CATEGORIES = ['All', 'Food', 'Transport', 'Entertainment', 'Health', 'Housing', 'Shopping', 'Utilities', 'Other']
 
@@ -32,6 +34,8 @@ export default function Dashboard() {
   const [filters, setFilters] = useState({ category: '', search: '', startDate: '', endDate: '' })
   const [error, setError] = useState('')
   const [currency, setCurrency] = useState(getPreferredCurrency())
+  const [exchangeRate, setExchangeRate] = useState(1)
+  const [rateWarning, setRateWarning] = useState('')
 
   const fetchExpenses = useCallback(async () => {
     setLoading(true)
@@ -54,14 +58,57 @@ export default function Dashboard() {
 
   useEffect(() => onCurrencyChange(setCurrency), [])
 
+  useEffect(() => {
+    let mounted = true
+
+    const loadExchangeRate = async () => {
+      try {
+        const nextRate = await getExchangeRate(DEFAULT_CURRENCY, currency)
+        if (mounted) {
+          setExchangeRate(nextRate)
+          setRateWarning('')
+        }
+      } catch {
+        if (mounted) {
+          setExchangeRate(1)
+          setRateWarning('Could not load live exchange rate. Amounts are shown in EUR values.')
+        }
+      }
+    }
+
+    loadExchangeRate()
+    return () => {
+      mounted = false
+    }
+  }, [currency])
+
+  const displayExpenses = useMemo(
+    () => expenses.map((expense) => ({
+      ...expense,
+      amount: convertAmount(expense.amount, exchangeRate),
+    })),
+    [expenses, exchangeRate]
+  )
+
+  const convertAmountToStorageCurrency = useCallback(async (amount) => {
+    if (currency === DEFAULT_CURRENCY) {
+      return Number(amount)
+    }
+
+    const latestRate = await getExchangeRate(DEFAULT_CURRENCY, currency)
+    return convertAmount(amount, 1 / latestRate)
+  }, [currency])
+
   const handleCreate = async (data) => {
-    await api.post('/expenses', data)
+    const normalizedAmount = await convertAmountToStorageCurrency(data.amount)
+    await api.post('/expenses', { ...data, amount: normalizedAmount })
     setShowForm(false)
     fetchExpenses()
   }
 
   const handleUpdate = async (data) => {
-    await api.put(`/expenses/${editingExpense.id}`, data)
+    const normalizedAmount = await convertAmountToStorageCurrency(data.amount)
+    await api.put(`/expenses/${editingExpense.id}`, { ...data, amount: normalizedAmount })
     setEditingExpense(null)
     fetchExpenses()
   }
@@ -71,7 +118,7 @@ export default function Dashboard() {
     fetchExpenses()
   }
 
-  const totalAmount = expenses.reduce((sum, e) => sum + parseFloat(e.amount), 0)
+  const totalAmount = displayExpenses.reduce((sum, e) => sum + Number(e.amount || 0), 0)
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -149,11 +196,17 @@ export default function Dashboard() {
           </div>
         )}
 
+        {rateWarning && (
+          <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-900 text-amber-700 dark:text-amber-300 px-4 py-3 rounded-lg text-sm mb-4">
+            {rateWarning}
+          </div>
+        )}
+
         {loading ? (
           <div className="text-center py-12 text-gray-400 dark:text-gray-500">Loading...</div>
         ) : (
           <ExpenseList
-            expenses={expenses}
+            expenses={displayExpenses}
             currency={currency}
             onEdit={(expense) => { setEditingExpense(expense); setShowForm(false) }}
             onDelete={handleDelete}
