@@ -107,11 +107,11 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Navigation />
 
-      <main className="max-w-6xl mx-auto px-4 py-6 sm:py-8">
+      <main className="max-w-screen-2xl mx-auto px-3 sm:px-4 lg:px-6 py-5 sm:py-8 lg:py-10">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">My Expenses</h1>
-            <p className="text-gray-500 dark:text-gray-300 text-sm mt-1">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-gray-100">My Expenses</h1>
+            <p className="text-gray-500 dark:text-gray-300 text-xs sm:text-sm mt-1">
               {expenses.length} expense{expenses.length !== 1 ? 's' : ''} · Total: {formatCurrency(totalAmount, currency)}
             </p>
           </div>

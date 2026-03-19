@@ -42,21 +42,21 @@ export default function StatisticsChart({ stats, currency = 'EUR' }) {
     <div className="space-y-8">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 text-center">
-          <p className="text-sm text-gray-500 dark:text-gray-300">Total Spent</p>
-          <p className="text-3xl font-bold text-blue-600">
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-300">Total Spent</p>
+          <p className="text-2xl sm:text-3xl font-bold text-blue-600">
             {formatCurrency(stats.totalAmount || 0, currency)}
           </p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 text-center">
-          <p className="text-sm text-gray-500 dark:text-gray-300">Total Expenses</p>
-          <p className="text-3xl font-bold text-green-600">{stats.totalCount || 0}</p>
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-300">Total Expenses</p>
+          <p className="text-2xl sm:text-3xl font-bold text-green-600">{stats.totalCount || 0}</p>
         </div>
       </div>
 
       {categoryData.length > 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
           <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Spending by Category</h3>
-          <div className="h-64 sm:h-72">
+          <div className="h-60 sm:h-72 lg:h-80">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -82,7 +82,7 @@ export default function StatisticsChart({ stats, currency = 'EUR' }) {
       {monthData.length > 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
           <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">Monthly Spending</h3>
-          <div className="h-64 sm:h-72">
+          <div className="h-60 sm:h-72 lg:h-80">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={monthData} margin={{ top: 8, right: 12, left: 0, bottom: isSmallScreen ? 28 : 12 }}>
                 <XAxis

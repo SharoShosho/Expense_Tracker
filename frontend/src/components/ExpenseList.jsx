@@ -39,11 +39,11 @@ export default function ExpenseList({ expenses, onEdit, onDelete, currency = 'EU
       {expenses.map((expense) => (
         <div
           key={expense.id}
-          className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between hover:shadow-sm transition"
+          className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-3 sm:p-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between hover:shadow-sm transition"
         >
           <div className="flex items-start sm:items-center gap-4 w-full min-w-0">
             <div className="flex flex-col">
-              <span className="font-semibold text-gray-900 dark:text-gray-100">
+              <span className="font-semibold text-sm sm:text-base text-gray-900 dark:text-gray-100">
                 {formatCurrency(expense.amount, currency)}
               </span>
               <span className="text-xs text-gray-400 dark:text-gray-500">{expense.date}</span>

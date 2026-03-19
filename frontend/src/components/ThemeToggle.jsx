@@ -28,11 +28,11 @@ export default function ThemeToggle() {
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
       <button
         type="button"
         onClick={toggleDarkMode}
-        className="text-xs sm:text-sm px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-100 transition"
+        className="text-xs sm:text-sm px-2.5 sm:px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-100 transition"
       >
         {themeState.activeTheme === 'dark' ? 'Light mode' : 'Dark mode'}
       </button>
