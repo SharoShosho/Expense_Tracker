@@ -54,12 +54,13 @@ export default function ExpenseForm({ onSubmit, onCancel, initialData, currency 
         <input
           type="number"
           name="amount"
+          inputMode="decimal"
           step="0.01"
           min="0.01"
           value={form.amount}
           onChange={handleChange}
           required
-          className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 text-base sm:text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
           placeholder="0.00"
         />
       </div>
@@ -70,7 +71,7 @@ export default function ExpenseForm({ onSubmit, onCancel, initialData, currency 
           name="category"
           value={form.category}
           onChange={handleChange}
-          className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 text-base sm:text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           {CATEGORIES.map((cat) => (
             <option key={cat} value={cat}>
@@ -87,7 +88,7 @@ export default function ExpenseForm({ onSubmit, onCancel, initialData, currency 
           name="description"
           value={form.description}
           onChange={handleChange}
-          className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 text-base sm:text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
           placeholder="What was this expense for?"
         />
       </div>
@@ -100,15 +101,15 @@ export default function ExpenseForm({ onSubmit, onCancel, initialData, currency 
           value={form.date}
           onChange={handleChange}
           required
-          className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 text-base sm:text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
 
-      <div className="flex gap-3 pt-2">
+      <div className="flex flex-col sm:flex-row gap-3 pt-2">
         <button
           type="submit"
           disabled={loading}
-          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition disabled:opacity-50"
+          className="w-full sm:flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition disabled:opacity-50"
         >
           {loading ? 'Saving...' : initialData ? 'Update Expense' : 'Add Expense'}
         </button>
@@ -116,7 +117,7 @@ export default function ExpenseForm({ onSubmit, onCancel, initialData, currency 
           <button
             type="button"
             onClick={onCancel}
-            className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-lg transition"
+            className="w-full sm:flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-lg transition"
           >
             Cancel
           </button>

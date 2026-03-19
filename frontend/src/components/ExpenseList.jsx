@@ -39,16 +39,16 @@ export default function ExpenseList({ expenses, onEdit, onDelete, currency = 'EU
       {expenses.map((expense) => (
         <div
           key={expense.id}
-          className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 flex items-center justify-between hover:shadow-sm transition"
+          className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between hover:shadow-sm transition"
         >
-          <div className="flex items-center gap-4">
+          <div className="flex items-start sm:items-center gap-4 w-full min-w-0">
             <div className="flex flex-col">
               <span className="font-semibold text-gray-900 dark:text-gray-100">
                 {formatCurrency(expense.amount, currency)}
               </span>
               <span className="text-xs text-gray-400 dark:text-gray-500">{expense.date}</span>
             </div>
-            <div>
+            <div className="min-w-0">
               <span
                 className={`inline-block text-xs px-2 py-1 rounded-full font-medium ${
                   CATEGORY_COLORS[expense.category] || CATEGORY_COLORS.Other
@@ -57,21 +57,21 @@ export default function ExpenseList({ expenses, onEdit, onDelete, currency = 'EU
                 {expense.category}
               </span>
               {expense.description && (
-                <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{expense.description}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-300 mt-1 break-words">{expense.description}</p>
               )}
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex w-full sm:w-auto gap-2">
             <button
               onClick={() => onEdit(expense)}
-              className="text-sm px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 transition"
+              className="flex-1 sm:flex-none text-sm px-3 py-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 transition"
             >
               Edit
             </button>
             <button
               onClick={() => handleDelete(expense.id)}
               disabled={deletingId === expense.id}
-              className="text-sm px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 transition disabled:opacity-50"
+              className="flex-1 sm:flex-none text-sm px-3 py-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 transition disabled:opacity-50"
             >
               {deletingId === expense.id ? '...' : 'Delete'}
             </button>

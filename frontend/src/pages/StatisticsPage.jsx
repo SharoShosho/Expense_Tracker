@@ -52,7 +52,7 @@ export default function StatisticsPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Navigation />
 
-      <main className="max-w-4xl mx-auto px-4 py-8">
+      <main className="max-w-6xl mx-auto px-4 py-6 sm:py-8">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Statistics</h1>
           <p className="text-gray-500 dark:text-gray-300 text-sm mt-1">Your spending overview</p>

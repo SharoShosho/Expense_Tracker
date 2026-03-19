@@ -32,22 +32,22 @@ export default function Navigation() {
 
   return (
     <nav className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
-      <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-6">
-          <span className="text-xl font-bold text-blue-600">💰 Expense Tracker</span>
-          <Link to="/dashboard" className={isActive('/dashboard')}>
+      <div className="max-w-6xl mx-auto px-4 py-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4 w-full md:w-auto">
+          <span className="text-lg sm:text-xl font-bold text-blue-600 whitespace-nowrap">💰 Expense Tracker</span>
+          <Link to="/dashboard" className={`${isActive('/dashboard')} text-sm sm:text-base`}>
             Dashboard
           </Link>
-          <Link to="/statistics" className={isActive('/statistics')}>
+          <Link to="/statistics" className={`${isActive('/statistics')} text-sm sm:text-base`}>
             Statistics
           </Link>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 md:justify-end">
           <ThemeToggle />
           <select
             value={currency}
             onChange={handleCurrencyChange}
-            className="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100"
+            className="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 min-w-20"
             aria-label="Select currency"
           >
             {SUPPORTED_CURRENCIES.map((item) => (
@@ -56,7 +56,7 @@ export default function Navigation() {
               </option>
             ))}
           </select>
-          <span className="text-sm text-gray-500 dark:text-gray-300">{user?.email}</span>
+          <span className="hidden sm:inline text-sm text-gray-500 dark:text-gray-300 max-w-48 truncate">{user?.email}</span>
           <button
             onClick={handleLogout}
             className="text-sm px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-100 transition"

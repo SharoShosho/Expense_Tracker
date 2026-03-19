@@ -37,17 +37,17 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4 relative">
-      <div className="absolute top-4 right-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-3 sm:p-4 relative">
+      <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10">
         <ThemeToggle />
       </div>
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg w-full max-w-md p-8 border border-transparent dark:border-gray-700">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg w-full max-w-md p-5 sm:p-8 border border-transparent dark:border-gray-700 mt-12 sm:mt-0">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">💰 Expense Tracker</h1>
           <p className="text-gray-500 dark:text-gray-300 mt-2">Create your account</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
               {error}
