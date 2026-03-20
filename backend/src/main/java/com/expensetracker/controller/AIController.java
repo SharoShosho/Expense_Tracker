@@ -9,8 +9,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Map;
-
 @RestController
 @RequestMapping("/api/ai")
 public class AIController {
@@ -83,15 +81,5 @@ public class AIController {
             @AuthenticationPrincipal UserDetails userDetails) {
         String userId = authenticatedUserService.resolveUserId(userDetails);
         return ResponseEntity.ok(savingTipsEngine.analyzeHistoryTrend(userId));
-    }
-
-    @PostMapping("/train")
-    public ResponseEntity<Map<String, String>> triggerTraining(
-            @AuthenticationPrincipal UserDetails userDetails) {
-        // The rule-based engine does not require training
-        return ResponseEntity.ok(Map.of(
-                "status", "success",
-                "message", "Tips engine refreshed. Analysis is performed in real-time based on your latest data."
-        ));
     }
 }
