@@ -5,6 +5,7 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
@@ -17,4 +18,14 @@ public interface ExpenseRepository extends MongoRepository<Expense, String> {
     List<Expense> findByUserIdAndDateBetween(String userId, LocalDate startDate, LocalDate endDate);
 
     List<Expense> findByUserIdAndDescriptionContainingIgnoreCase(String userId, String description);
+
+    // Soft-delete aware queries
+    List<Expense> findByUserIdAndIsDeletedFalse(String userId);
+
+    List<Expense> findByUserIdAndIsDeletedFalseAndDateBetween(
+            String userId, LocalDate startDate, LocalDate endDate);
+
+    long countByUserIdAndIsDeletedFalseAndUpdatedAtAfter(String userId, LocalDateTime since);
+
+    long countByUserIdAndIsDeletedTrue(String userId);
 }
