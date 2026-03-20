@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import Dashboard from './pages/Dashboard'
@@ -18,39 +18,45 @@ function Protected({ children }) {
   return <ProtectedRoute>{children}</ProtectedRoute>
 }
 
+const router = createBrowserRouter(
+  [
+    { path: '/login', element: <LoginPage /> },
+    { path: '/register', element: <RegisterPage /> },
+    {
+      path: '/dashboard',
+      element: (
+        <Protected>
+          <Dashboard />
+        </Protected>
+      ),
+    },
+    {
+      path: '/statistics',
+      element: (
+        <Protected>
+          <StatisticsPage />
+        </Protected>
+      ),
+    },
+    { path: '/ai/tips', element: <Protected><TipsOverview /></Protected> },
+    { path: '/ai/tips/spending-pattern', element: <Protected><SpendingPattern /></Protected> },
+    { path: '/ai/tips/behavioral', element: <Protected><BehavioralAnalysis /></Protected> },
+    { path: '/ai/tips/benchmarking', element: <Protected><Benchmarking /></Protected> },
+    { path: '/ai/tips/predictions', element: <Protected><Predictions /></Protected> },
+    { path: '/ai/tips/anomalies', element: <Protected><AnomalyAlerts /></Protected> },
+    { path: '/ai/tips/category/:categoryName', element: <Protected><CategoryDeepDive /></Protected> },
+    { path: '/ai/wellness', element: <Protected><WellnessScore /></Protected> },
+    { path: '/ai/tips/history-trend', element: <Protected><HistoryTrend /></Protected> },
+    { path: '/', element: <Navigate to="/dashboard" replace /> },
+  ],
+  {
+    future: {
+      v7_startTransition: true,
+      v7_relativeSplatPath: true,
+    },
+  },
+)
+
 export default function App() {
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route
-          path="/dashboard"
-          element={
-            <Protected>
-              <Dashboard />
-            </Protected>
-          }
-        />
-        <Route
-          path="/statistics"
-          element={
-            <Protected>
-              <StatisticsPage />
-            </Protected>
-          }
-        />
-        <Route path="/ai/tips" element={<Protected><TipsOverview /></Protected>} />
-        <Route path="/ai/tips/spending-pattern" element={<Protected><SpendingPattern /></Protected>} />
-        <Route path="/ai/tips/behavioral" element={<Protected><BehavioralAnalysis /></Protected>} />
-        <Route path="/ai/tips/benchmarking" element={<Protected><Benchmarking /></Protected>} />
-        <Route path="/ai/tips/predictions" element={<Protected><Predictions /></Protected>} />
-        <Route path="/ai/tips/anomalies" element={<Protected><AnomalyAlerts /></Protected>} />
-        <Route path="/ai/tips/category/:categoryName" element={<Protected><CategoryDeepDive /></Protected>} />
-        <Route path="/ai/wellness" element={<Protected><WellnessScore /></Protected>} />
-        <Route path="/ai/tips/history-trend" element={<Protected><HistoryTrend /></Protected>} />
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
-    </BrowserRouter>
-  )
+  return <RouterProvider router={router} />
 }

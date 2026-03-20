@@ -33,12 +33,14 @@ public class UserService {
     private JwtTokenProvider jwtTokenProvider;
 
     public Map<String, Object> register(RegisterRequest request) {
-        if (userRepository.existsByEmail(request.getEmail())) {
+        String normalizedEmail = normalizeEmail(request.getEmail());
+
+        if (userRepository.existsByEmail(normalizedEmail)) {
             throw new IllegalArgumentException("Email is already in use");
         }
 
         User user = new User();
-        user.setEmail(request.getEmail());
+        user.setEmail(normalizedEmail);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
 
         User savedUser = userRepository.save(user);
@@ -48,13 +50,15 @@ public class UserService {
     }
 
     public Map<String, Object> login(LoginRequest request) {
+        String normalizedEmail = normalizeEmail(request.getEmail());
+
         Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+                new UsernamePasswordAuthenticationToken(normalizedEmail, request.getPassword())
         );
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        User user = findUserByEmail(request.getEmail());
+        User user = findUserByEmail(normalizedEmail);
 
         String token = jwtTokenProvider.generateToken(user.getEmail());
 
@@ -72,5 +76,9 @@ public class UserService {
         response.put("email", user.getEmail());
         response.put("id", user.getId());
         return response;
+    }
+
+    private String normalizeEmail(String email) {
+        return email == null ? null : email.trim().toLowerCase();
     }
 }
