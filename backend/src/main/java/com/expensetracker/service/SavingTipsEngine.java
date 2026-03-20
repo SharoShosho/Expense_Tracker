@@ -70,6 +70,9 @@ public class SavingTipsEngine {
     @Autowired(required = false)
     private TipRanker tipRanker;
 
+    @Autowired(required = false)
+    private PersonalizationEngine personalizationEngine;
+
     // ──────────────────────────────────────────────────────────────────────────
     // Type 1: Spending Pattern Analysis
     // ──────────────────────────────────────────────────────────────────────────
@@ -1324,7 +1327,7 @@ public class SavingTipsEngine {
      * 3. Fall back to the legacy {@link #enhanceTipsWithNNPredictions} when
      *    either service is unavailable.
      *
-     * @param userId   the authenticated user (used for personalisation)
+     * @param userId   the authenticated user (used for personalization)
      * @param tips     rule-based tips produced by the analysis method
      * @param nnOutput raw NN probability vector (may be null)
      * @param nnIndex  index in {@code nnOutput} for this tip type
@@ -1332,9 +1335,19 @@ public class SavingTipsEngine {
      */
     List<SavingTipDTO> applyNNPipeline(String userId, List<SavingTipDTO> tips,
                                         double[] nnOutput, int nnIndex) {
-        // Fall back to legacy behaviour when advanced services are not wired
+        // Fall back to legacy behavior when advanced services are not wired
         if (nnTipGenerator == null || tipRanker == null) {
             return enhanceTipsWithNNPredictions(tips, nnOutput, nnIndex);
+        }
+
+        // Ensure a personalization profile exists for this user
+        if (personalizationEngine != null) {
+            try {
+                personalizationEngine.loadOrCreateProfile(userId);
+            } catch (Exception e) {
+                log.warn("Could not load/create personalization profile for user {}: {}",
+                        userId, e.getMessage());
+            }
         }
 
         List<SavingTipDTO> nnTips = nnTipGenerator.generateTipsFromNNOutput(userId, nnOutput);
