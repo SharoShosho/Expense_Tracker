@@ -1285,7 +1285,7 @@ public class SavingTipsEngine {
      * current month's features.  Returns {@code null} when no recent model exists,
      * the model cannot be loaded, or feature extraction fails.
      */
-    double[] getNNPredictions(String userId) {
+    private double[] getNNPredictions(String userId) {
         if (modelTrainingService == null || featureExtractionService == null) {
             return null;
         }
@@ -1325,7 +1325,7 @@ public class SavingTipsEngine {
      * priority is elevated to HIGH and an AI-confidence note is appended.
      * Falls back gracefully when {@code nnOutput} is null.
      */
-    List<SavingTipDTO> enhanceTipsWithNNPredictions(List<SavingTipDTO> tips, double[] nnOutput, int nnIndex) {
+    private List<SavingTipDTO> enhanceTipsWithNNPredictions(List<SavingTipDTO> tips, double[] nnOutput, int nnIndex) {
         if (nnOutput == null || nnIndex >= nnOutput.length || tips.isEmpty()) {
             return tips;
         }

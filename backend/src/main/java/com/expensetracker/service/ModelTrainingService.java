@@ -142,8 +142,8 @@ public class ModelTrainingService {
             meta.setUpdatedAt(LocalDateTime.now());
             meta = modelMetadataRepository.save(meta);
 
-            log.info("Training completed for user {} — version={} accuracy={:.4f}",
-                    userId, version, accuracy);
+            log.info("Training completed for user {} — version={} accuracy={}", userId, version,
+                    String.format("%.4f", accuracy));
 
             // 8. Clean up old models (keep only the latest)
             deleteOldModels(userId, version);

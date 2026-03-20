@@ -111,8 +111,6 @@ public class TrainingController {
             @AuthenticationPrincipal UserDetails userDetails) {
 
         String userId = authenticatedUserService.resolveUserId(userDetails);
-
-        // Use the repository directly for all records (injected via service layer below)
         List<Map<String, Object>> history = modelTrainingService.getTrainingHistory(userId, 10)
                 .stream()
                 .map(m -> {
