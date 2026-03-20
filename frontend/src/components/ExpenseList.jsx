@@ -14,9 +14,20 @@ const CATEGORY_COLORS = {
 
 export default function ExpenseList({ expenses, onEdit, onDelete, currency = 'EUR' }) {
   const [deletingId, setDeletingId] = useState(null)
+  const [pendingDeleteId, setPendingDeleteId] = useState(null)
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this expense?')) return
+  const openDeleteConfirm = (id) => {
+    setPendingDeleteId(id)
+  }
+
+  const closeDeleteConfirm = () => {
+    setPendingDeleteId(null)
+  }
+
+  const confirmDelete = async () => {
+    if (!pendingDeleteId) return
+    const id = pendingDeleteId
+    setPendingDeleteId(null)
     setDeletingId(id)
     try {
       await onDelete(id)
@@ -35,49 +46,77 @@ export default function ExpenseList({ expenses, onEdit, onDelete, currency = 'EU
   }
 
   return (
-    <div className="space-y-3">
-      {expenses.map((expense) => (
-        <div
-          key={expense.id}
-          className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-3 sm:p-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between hover:shadow-sm transition"
-        >
-          <div className="flex items-start sm:items-center gap-4 w-full min-w-0">
-            <div className="flex flex-col">
-              <span className="font-semibold text-sm sm:text-base text-gray-900 dark:text-gray-100">
-                {formatCurrency(expense.amount, currency)}
-              </span>
-              <span className="text-xs text-gray-400 dark:text-gray-500">{expense.date}</span>
+    <>
+      <div className="space-y-3">
+        {expenses.map((expense) => (
+          <div
+            key={expense.id}
+            className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-3 sm:p-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between hover:shadow-sm transition"
+          >
+            <div className="flex items-start sm:items-center gap-4 w-full min-w-0">
+              <div className="flex flex-col">
+                <span className="font-semibold text-sm sm:text-base text-gray-900 dark:text-gray-100">
+                  {formatCurrency(expense.amount, currency)}
+                </span>
+                <span className="text-xs text-gray-400 dark:text-gray-500">{expense.date}</span>
+              </div>
+              <div className="min-w-0">
+                <span
+                  className={`inline-block text-xs px-2 py-1 rounded-full font-medium ${
+                    CATEGORY_COLORS[expense.category] || CATEGORY_COLORS.Other
+                  }`}
+                >
+                  {expense.category}
+                </span>
+                {expense.description && (
+                  <p className="text-sm text-gray-600 dark:text-gray-300 mt-1 break-words">{expense.description}</p>
+                )}
+              </div>
             </div>
-            <div className="min-w-0">
-              <span
-                className={`inline-block text-xs px-2 py-1 rounded-full font-medium ${
-                  CATEGORY_COLORS[expense.category] || CATEGORY_COLORS.Other
-                }`}
+            <div className="flex w-full sm:w-auto gap-2">
+              <button
+                onClick={() => onEdit(expense)}
+                className="flex-1 sm:flex-none text-sm px-3 py-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 transition"
               >
-                {expense.category}
-              </span>
-              {expense.description && (
-                <p className="text-sm text-gray-600 dark:text-gray-300 mt-1 break-words">{expense.description}</p>
-              )}
+                Edit
+              </button>
+              <button
+                onClick={() => openDeleteConfirm(expense.id)}
+                disabled={deletingId === expense.id}
+                className="flex-1 sm:flex-none text-sm px-3 py-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 transition disabled:opacity-50"
+              >
+                {deletingId === expense.id ? '...' : 'Delete'}
+              </button>
             </div>
           </div>
-          <div className="flex w-full sm:w-auto gap-2">
-            <button
-              onClick={() => onEdit(expense)}
-              className="flex-1 sm:flex-none text-sm px-3 py-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 transition"
-            >
-              Edit
-            </button>
-            <button
-              onClick={() => handleDelete(expense.id)}
-              disabled={deletingId === expense.id}
-              className="flex-1 sm:flex-none text-sm px-3 py-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 transition disabled:opacity-50"
-            >
-              {deletingId === expense.id ? '...' : 'Delete'}
-            </button>
+        ))}
+      </div>
+
+      {pendingDeleteId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={closeDeleteConfirm} aria-hidden="true" />
+          <div className="relative w-full max-w-md rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-2xl p-5 sm:p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Delete expense?</h3>
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+              This action cannot be undone. The expense will be removed permanently.
+            </p>
+            <div className="mt-5 flex gap-3 justify-end">
+              <button
+                onClick={closeDeleteConfirm}
+                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium transition"
+              >
+                Delete
+              </button>
+            </div>
           </div>
         </div>
-      ))}
-    </div>
+      )}
+    </>
   )
 }
