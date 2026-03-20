@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
 
 /**
  * Persists per-user behavioural signals used to personalise tip ranking.
@@ -59,6 +60,25 @@ public class UserBehaviorProfile {
      */
     @Builder.Default
     private Map<String, Double> tipEngagementScores = new HashMap<>();
+
+    /** Cumulative count of tips the user has followed. */
+    @Builder.Default
+    private int tipsFollowed = 0;
+
+    /** Cumulative count of tips the user has ignored. */
+    @Builder.Default
+    private int tipsIgnored = 0;
+
+    /** Timestamp of the last tip the user marked as followed. */
+    private LocalDateTime lastTipFollowedDate;
+
+    /**
+     * When {@code true} the system is still gathering enough feedback to
+     * make meaningful personalisation decisions.
+     * See {@code nn.personalization.learning-phase-count}.
+     */
+    @Builder.Default
+    private boolean learningPhase = true;
 
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();

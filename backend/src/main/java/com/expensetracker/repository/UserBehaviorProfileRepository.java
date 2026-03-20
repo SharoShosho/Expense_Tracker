@@ -10,4 +10,6 @@ import java.util.Optional;
 public interface UserBehaviorProfileRepository extends MongoRepository<UserBehaviorProfile, String> {
 
     Optional<UserBehaviorProfile> findByUserId(String userId);
+
+    void deleteByUserId(String userId);
 }
