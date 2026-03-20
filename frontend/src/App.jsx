@@ -3,6 +3,7 @@ import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import Dashboard from './pages/Dashboard'
 import StatisticsPage from './pages/StatisticsPage'
+import BudgetPage from './pages/BudgetPage'
 import ProtectedRoute from './components/ProtectedRoute'
 import TipsOverview from './components/AI/TipsOverview'
 import SpendingPattern from './components/AI/SpendingPattern'
@@ -35,6 +36,14 @@ const router = createBrowserRouter(
       element: (
         <Protected>
           <StatisticsPage />
+        </Protected>
+      ),
+    },
+    {
+      path: '/budget/setup',
+      element: (
+        <Protected>
+          <BudgetPage />
         </Protected>
       ),
     },
