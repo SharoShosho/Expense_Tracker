@@ -41,6 +41,9 @@ export default function Navigation() {
           <Link to="/statistics" className={`${isActive('/statistics')} text-sm sm:text-base`}>
             Statistics
           </Link>
+          <Link to="/ai/tips" className={`${isActive('/ai/tips')} text-sm sm:text-base`}>
+            AI Tips
+          </Link>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3 md:justify-end">
           <ThemeToggle />

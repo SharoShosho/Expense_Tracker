@@ -11,8 +11,8 @@ import {
 import { useCurrencyConversion } from '../hooks/useCurrencyConversion'
 import { getErrorMessage } from '../services/errorService'
 import { budgetService } from '../services/budgetService'
+import { EXPENSE_CATEGORIES } from '../constants/categories'
 
-const EXPENSE_CATEGORIES = ['Food', 'Transport', 'Entertainment', 'Health', 'Housing', 'Shopping', 'Utilities', 'Other']
 const CATEGORIES = ['All', ...EXPENSE_CATEGORIES]
 
 const getCurrentMonthString = () => {
