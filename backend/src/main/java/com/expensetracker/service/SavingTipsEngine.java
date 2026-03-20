@@ -5,6 +5,11 @@ import com.expensetracker.model.Budget;
 import com.expensetracker.model.Expense;
 import com.expensetracker.repository.BudgetRepository;
 import com.expensetracker.repository.ExpenseRepository;
+import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
+import org.nd4j.linalg.api.ndarray.INDArray;
+import org.nd4j.linalg.factory.Nd4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -19,6 +24,21 @@ import java.util.stream.IntStream;
 
 @Service
 public class SavingTipsEngine {
+
+    private static final Logger log = LoggerFactory.getLogger(SavingTipsEngine.class);
+
+    // Neural network output index → tip type mapping
+    private static final int NN_IDX_SPENDING_PATTERN = 0;
+    private static final int NN_IDX_BEHAVIORAL       = 1;
+    private static final int NN_IDX_BENCHMARKING     = 2;
+    private static final int NN_IDX_PREDICTIONS      = 3;
+    private static final int NN_IDX_ANOMALIES        = 4;
+    private static final int NN_IDX_CATEGORY         = 5;
+    private static final int NN_IDX_WELLNESS         = 6;
+    private static final int NN_IDX_HISTORY          = 7;
+
+    // Staleness threshold: re-use model if it is less than 7 days old
+    private static final int NN_MAX_AGE_DAYS = 7;
 
     // Benchmark percentages of total spending (industry-standard budgeting guidelines)
     private static final Map<String, Double> BENCHMARK_PERCENTAGES = new LinkedHashMap<>();
@@ -39,6 +59,12 @@ public class SavingTipsEngine {
 
     @Autowired
     private BudgetRepository budgetRepository;
+
+    @Autowired(required = false)
+    private ModelTrainingService modelTrainingService;
+
+    @Autowired(required = false)
+    private FeatureExtractionService featureExtractionService;
 
     // ──────────────────────────────────────────────────────────────────────────
     // Type 1: Spending Pattern Analysis
@@ -73,6 +99,8 @@ public class SavingTipsEngine {
                 .sum();
 
         List<SavingTipDTO> tips = buildSpendingPatternTips(categories, totalSpent, totalBudget);
+        double[] nnOutput = getNNPredictions(userId);
+        tips = enhanceTipsWithNNPredictions(tips, nnOutput, NN_IDX_SPENDING_PATTERN);
 
         double budgetUsage = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
 
@@ -224,6 +252,8 @@ public class SavingTipsEngine {
                 .filter(e -> toDouble(e.getAmount()) > avgTx * 1.5).count();
 
         List<SavingTipDTO> tips = buildBehavioralTips(weekdayAvg, weekendAvg, impulseDays, impulseCount, peakDay);
+        double[] nnOutput = getNNPredictions(userId);
+        tips = enhanceTipsWithNNPredictions(tips, nnOutput, NN_IDX_BEHAVIORAL);
 
         return BehavioralAnalysisDTO.builder()
                 .dailyTransactionCount((int) (expenses.size() / Math.max(daysInMonth, 1)))
@@ -377,7 +407,7 @@ public class SavingTipsEngine {
                 .avgSpendingByCategory(avgPercentages)
                 .strengths(strengths)
                 .weaknesses(weaknesses)
-                .tips(tips)
+                .tips(enhanceTipsWithNNPredictions(tips, getNNPredictions(userId), NN_IDX_BENCHMARKING))
                 .build();
     }
 
@@ -423,6 +453,7 @@ public class SavingTipsEngine {
         }
 
         List<SavingTipDTO> tips = buildPredictionTips(trendPercent, predictions);
+        tips = enhanceTipsWithNNPredictions(tips, getNNPredictions(userId), NN_IDX_PREDICTIONS);
 
         return PredictionDTO.builder()
                 .currentMonthSpending(round(currentMonthSpending))
@@ -542,6 +573,7 @@ public class SavingTipsEngine {
         double totalAnomalyAmount = anomalies.stream().mapToDouble(AnomalyItemDTO::getAmount).sum();
 
         List<SavingTipDTO> tips = buildAnomalyTips(anomalies, totalAnomalyAmount);
+        tips = enhanceTipsWithNNPredictions(tips, getNNPredictions(userId), NN_IDX_ANOMALIES);
 
         return AnomalyDTO.builder()
                 .anomalyCount(anomalies.size())
@@ -633,6 +665,7 @@ public class SavingTipsEngine {
         }
 
         List<SavingTipDTO> tips = buildCategoryTips(categoryName, totalSpent, budget, budgetUsage, avgTx, txCount);
+        tips = enhanceTipsWithNNPredictions(tips, getNNPredictions(userId), NN_IDX_CATEGORY);
 
         return CategoryAnalysisDTO.builder()
                 .categoryName(categoryName)
@@ -766,6 +799,7 @@ public class SavingTipsEngine {
 
         List<SavingTipDTO> tips = buildWellnessTips(spendingDiscipline, budgetAdherence, savingRate,
                 financialAwareness, riskManagement, overall);
+        tips = enhanceTipsWithNNPredictions(tips, getNNPredictions(userId), NN_IDX_WELLNESS);
 
         return WellnessScoreDTO.builder()
                 .overallScore(overall)
@@ -955,6 +989,7 @@ public class SavingTipsEngine {
         }
 
         List<SavingTipDTO> tips = buildHistoryTips(trend, direction, unsustainable, avg);
+        tips = enhanceTipsWithNNPredictions(tips, getNNPredictions(userId), NN_IDX_HISTORY);
 
         return HistoryTrendDTO.builder()
                 .monthlySpending(monthlySpending)
@@ -1239,5 +1274,81 @@ public class SavingTipsEngine {
     private String capitalizeFirst(String s) {
         if (s == null || s.isEmpty()) return s;
         return s.substring(0, 1).toUpperCase(Locale.ROOT) + s.substring(1);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Neural Network integration
+    // ──────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Attempts to load the trained model for this user and run inference on the
+     * current month's features.  Returns {@code null} when no recent model exists,
+     * the model cannot be loaded, or feature extraction fails.
+     */
+    double[] getNNPredictions(String userId) {
+        if (modelTrainingService == null || featureExtractionService == null) {
+            return null;
+        }
+        if (!modelTrainingService.hasRecentModel(userId, NN_MAX_AGE_DAYS)) {
+            return null;
+        }
+        try {
+            Optional<MultiLayerNetwork> networkOpt = modelTrainingService.loadModel(userId);
+            if (networkOpt.isEmpty()) {
+                return null;
+            }
+            double[] features = featureExtractionService.extractFeatures(userId, YearMonth.now());
+            if (!featureExtractionService.validateFeatures(features)) {
+                log.warn("Invalid NN features for user {} — falling back to rule-based", userId);
+                return null;
+            }
+            // Normalise single row using the same min-max approach
+            double[][] norm = featureExtractionService.normalizeFeatures(new double[][]{features});
+            INDArray input  = Nd4j.create(norm);
+            INDArray output = networkOpt.get().output(input, false);
+            double[] result = new double[output.columns()];
+            for (int i = 0; i < result.length; i++) {
+                result[i] = output.getDouble(0, i);
+            }
+            log.debug("NN predictions for user {}: {}", userId, Arrays.toString(result));
+            return result;
+        } catch (Exception e) {
+            log.warn("NN inference failed for user {}: {} — falling back to rule-based",
+                    userId, e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Enhances a list of tips using NN output for the given tip-type index.
+     * If the NN confidence for this tip type is high (> 0.75) the first tip's
+     * priority is elevated to HIGH and an AI-confidence note is appended.
+     * Falls back gracefully when {@code nnOutput} is null.
+     */
+    List<SavingTipDTO> enhanceTipsWithNNPredictions(List<SavingTipDTO> tips, double[] nnOutput, int nnIndex) {
+        if (nnOutput == null || nnIndex >= nnOutput.length || tips.isEmpty()) {
+            return tips;
+        }
+        double confidence = nnOutput[nnIndex];
+        if (confidence > 0.75) {
+            // Upgrade first tip to HIGH priority and note the NN confidence
+            SavingTipDTO first = tips.get(0);
+            List<String> actions = new ArrayList<>(first.getActionItems() != null
+                    ? first.getActionItems() : List.of());
+            actions.add(String.format("AI model confidence: %.0f%% — this tip is particularly relevant for you",
+                    confidence * 100));
+            SavingTipDTO enhanced = SavingTipDTO.builder()
+                    .title(first.getTitle())
+                    .message(first.getMessage())
+                    .priority("HIGH")
+                    .potentialSavings(first.getPotentialSavings())
+                    .actionItems(actions)
+                    .build();
+            List<SavingTipDTO> result = new ArrayList<>();
+            result.add(enhanced);
+            result.addAll(tips.subList(1, tips.size()));
+            return result;
+        }
+        return tips;
     }
 }
