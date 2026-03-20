@@ -5,11 +5,6 @@ import com.expensetracker.model.ModelMetadata;
 import com.expensetracker.model.TrainingStatus;
 import com.expensetracker.nn.NeuralNetworkModel;
 import com.expensetracker.repository.ModelMetadataRepository;
-import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
-import org.deeplearning4j.util.ModelSerializer;
-import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.dataset.DataSet;
-import org.nd4j.linalg.factory.Nd4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,12 +16,11 @@ import java.io.File;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
 /**
- * Manages the full lifecycle of per-user neural network models:
+ * Manages the full lifecycle of per-user prediction models:
  * training, persistence, loading, validation, and status tracking.
  */
 @Service
@@ -46,8 +40,8 @@ public class ModelTrainingService {
     @Value("${nn.training.epochs:100}")
     private int epochs;
 
-    @Value("${nn.training.batch-size:32}")
-    private int batchSize;
+    @Value("${nn.training.learning-rate:0.001}")
+    private double learningRate;
 
     @Value("${nn.training.validation-split:0.2}")
     private double validationSplit;
@@ -65,8 +59,6 @@ public class ModelTrainingService {
     /**
      * Starts an async training job for the given user.
      * Returns immediately; status can be polled via {@link #getTrainingStatus(String)}.
-     *
-     * @return the new model version string
      */
     @Async
     public void startTraining(String userId) {
@@ -109,40 +101,33 @@ public class ModelTrainingService {
 
             // 3. Train/test split (80/20)
             int splitIdx = (int) Math.max(1, Math.floor(dataset.size() * (1.0 - validationSplit)));
-            DataSet trainSet = toDataSet(normFeatures, dataset, 0, splitIdx);
-            DataSet testSet  = toDataSet(normFeatures, dataset, splitIdx, dataset.size());
+            Slice trainSlice = toSlice(normFeatures, dataset, 0, splitIdx);
+            Slice testSlice = toSlice(normFeatures, dataset, splitIdx, dataset.size());
 
             // 4. Build & train network
-            NeuralNetworkModel modelWrapper = new NeuralNetworkModel();
-            MultiLayerNetwork network = modelWrapper.getNetwork();
-
-            for (int epoch = 0; epoch < epochs; epoch++) {
-                DataSet shuffled = trainSet.copy();
-                shuffled.shuffle();
-                network.fit(shuffled);
-                if (epoch % 20 == 0) {
-                    log.debug("User {} — epoch {}/{} complete", userId, epoch + 1, epochs);
-                }
-            }
+            NeuralNetworkModel model = new NeuralNetworkModel(learningRate);
+            model.fit(trainSlice.features(), trainSlice.labels(), epochs, learningRate);
 
             // 5. Validate
-            double accuracy = testSet.numExamples() > 0 ? evaluateAccuracy(network, testSet) : 0.0;
-            double loss = testSet.numExamples() > 0 ? evaluateLoss(network, testSet) : Double.NaN;
+            double accuracy = testSlice.size() > 0
+                    ? evaluateAccuracy(model, testSlice.features(), testSlice.labels()) : 0.0;
+            double loss = testSlice.size() > 0
+                    ? model.binaryCrossEntropy(testSlice.features(), testSlice.labels()) : 0.0;
 
             // 6. Persist model
-            String path = saveModel(userId, version, network);
+            String path = saveModel(userId, version, model);
 
             // 7. Update metadata
             meta.setTrainingStatus(TrainingStatus.COMPLETED);
             meta.setTrainingEndTime(LocalDateTime.now());
             meta.setAccuracy(accuracy);
-            meta.setLossFunction(Double.isNaN(loss) ? 0.0 : loss);
+            meta.setLossFunction(loss);
             meta.setTotalSamples(dataset.size());
             meta.setModelPath(path);
             meta.setUpdatedAt(LocalDateTime.now());
             meta = modelMetadataRepository.save(meta);
 
-            log.info("Training completed for user {} — version={} accuracy={:.4f}",
+            log.info("Training completed for user {} - version={} accuracy={}",
                     userId, version, accuracy);
 
             // 8. Clean up old models (keep only the latest)
@@ -159,14 +144,13 @@ public class ModelTrainingService {
     /**
      * Saves a trained model to disk. Returns the file path.
      */
-    public String saveModel(String userId, String version, MultiLayerNetwork network) throws IOException {
+    public String saveModel(String userId, String version, NeuralNetworkModel model) throws IOException {
         File dir = new File(modelSavePath, userId);
         if (!dir.exists() && !dir.mkdirs()) {
             throw new IOException("Cannot create model directory: " + dir.getAbsolutePath());
         }
         File modelFile = new File(dir, version + ".zip");
-        ModelSerializer.writeModel(network, modelFile, true);
-        log.debug("Model saved to {}", modelFile.getAbsolutePath());
+        model.save(modelFile);
         return modelFile.getAbsolutePath();
     }
 
@@ -175,7 +159,7 @@ public class ModelTrainingService {
      *
      * @return the loaded network, or empty if no model exists
      */
-    public Optional<MultiLayerNetwork> loadModel(String userId) {
+    public Optional<NeuralNetworkModel> loadModel(String userId) {
         Optional<ModelMetadata> latestMeta =
                 modelMetadataRepository.findFirstByUserIdOrderByCreatedAtDesc(userId);
 
@@ -187,14 +171,11 @@ public class ModelTrainingService {
 
         File modelFile = new File(latestMeta.get().getModelPath());
         if (!modelFile.exists()) {
-            log.warn("Model file not found for user {}: {}", userId, modelFile.getAbsolutePath());
             return Optional.empty();
         }
 
         try {
-            MultiLayerNetwork network = ModelSerializer.restoreMultiLayerNetwork(modelFile);
-            log.debug("Loaded model for user {} from {}", userId, modelFile.getAbsolutePath());
-            return Optional.of(network);
+            return Optional.of(NeuralNetworkModel.load(modelFile));
         } catch (IOException e) {
             log.error("Failed to load model for user {}: {}", userId, e.getMessage(), e);
             return Optional.empty();
@@ -223,7 +204,6 @@ public class ModelTrainingService {
             }
         }
         modelMetadataRepository.deleteByUserId(userId);
-        log.info("Deleted all models for user {}", userId);
     }
 
     /**
@@ -253,46 +233,33 @@ public class ModelTrainingService {
     // Private helpers
     // ──────────────────────────────────────────────────────────────────────────
 
-    private DataSet toDataSet(double[][] normFeatures, List<FeatureVector> vectors, int from, int to) {
-        int rows = to - from;
-        if (rows <= 0) {
-            return new DataSet(Nd4j.zeros(1, NeuralNetworkModel.INPUT_SIZE),
-                               Nd4j.zeros(1, NeuralNetworkModel.OUTPUT_SIZE));
-        }
-        double[][] featSlice  = new double[rows][NeuralNetworkModel.INPUT_SIZE];
+    private Slice toSlice(double[][] normFeatures, List<FeatureVector> vectors, int from, int to) {
+        int rows = Math.max(0, to - from);
+        double[][] featSlice = new double[rows][NeuralNetworkModel.INPUT_SIZE];
         double[][] labelSlice = new double[rows][NeuralNetworkModel.OUTPUT_SIZE];
         for (int i = 0; i < rows; i++) {
-            featSlice[i]  = normFeatures[from + i];
+            featSlice[i] = normFeatures[from + i];
             labelSlice[i] = vectors.get(from + i).getLabels();
         }
-        INDArray features = Nd4j.create(featSlice);
-        INDArray labels   = Nd4j.create(labelSlice);
-        return new DataSet(features, labels);
+        return new Slice(featSlice, labelSlice);
     }
 
-    /**
-     * Element-wise threshold accuracy: prediction > 0.5 matches label.
-     */
-    private double evaluateAccuracy(MultiLayerNetwork network, DataSet testSet) {
-        INDArray output = network.output(testSet.getFeatures(), false);
-        INDArray labels = testSet.getLabels();
+    private double evaluateAccuracy(NeuralNetworkModel model, double[][] testFeatures, double[][] testLabels) {
+        double[][] output = model.predict(testFeatures);
         long correct = 0;
-        long total   = 0;
-        long rows = output.rows();
-        long cols = output.columns();
-        for (long r = 0; r < rows; r++) {
-            for (long c = 0; c < cols; c++) {
-                double pred  = output.getDouble(r, c) > 0.5 ? 1.0 : 0.0;
-                double label = labels.getDouble(r, c);
-                if (pred == label) correct++;
+        long total = 0;
+
+        for (int r = 0; r < output.length; r++) {
+            for (int c = 0; c < output[r].length; c++) {
+                double pred = output[r][c] > 0.5 ? 1.0 : 0.0;
+                double label = testLabels[r][c];
+                if (pred == label) {
+                    correct++;
+                }
                 total++;
             }
         }
         return total > 0 ? (double) correct / total : 0.0;
-    }
-
-    private double evaluateLoss(MultiLayerNetwork network, DataSet testSet) {
-        return network.score(testSet);
     }
 
     private ModelMetadata failTraining(ModelMetadata meta, String reason) {
@@ -309,10 +276,7 @@ public class ModelTrainingService {
         for (ModelMetadata m : all) {
             if (!keepVersion.equals(m.getModelVersion())) {
                 if (m.getModelPath() != null) {
-                    boolean deleted = new File(m.getModelPath()).delete();
-                    if (deleted) {
-                        log.debug("Deleted old model file: {}", m.getModelPath());
-                    }
+                    new File(m.getModelPath()).delete();
                 }
                 modelMetadataRepository.delete(m);
             }
@@ -328,5 +292,11 @@ public class ModelTrainingService {
         return dataset.stream()
                 .mapToInt(fv -> (int) Math.round(fv.getFeatures()[19] * 30))
                 .sum();
+    }
+
+    private record Slice(double[][] features, double[][] labels) {
+        int size() {
+            return features.length;
+        }
     }
 }

@@ -3,11 +3,9 @@ package com.expensetracker.service;
 import com.expensetracker.dto.*;
 import com.expensetracker.model.Budget;
 import com.expensetracker.model.Expense;
+import com.expensetracker.nn.NeuralNetworkModel;
 import com.expensetracker.repository.BudgetRepository;
 import com.expensetracker.repository.ExpenseRepository;
-import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
-import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.factory.Nd4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -1293,7 +1291,7 @@ public class SavingTipsEngine {
             return null;
         }
         try {
-            Optional<MultiLayerNetwork> networkOpt = modelTrainingService.loadModel(userId);
+            Optional<NeuralNetworkModel> networkOpt = modelTrainingService.loadModel(userId);
             if (networkOpt.isEmpty()) {
                 return null;
             }
@@ -1302,14 +1300,8 @@ public class SavingTipsEngine {
                 log.warn("Invalid NN features for user {} — falling back to rule-based", userId);
                 return null;
             }
-            // Normalise single row using the same min-max approach
             double[][] norm = featureExtractionService.normalizeFeatures(new double[][]{features});
-            INDArray input  = Nd4j.create(norm);
-            INDArray output = networkOpt.get().output(input, false);
-            double[] result = new double[output.columns()];
-            for (int i = 0; i < result.length; i++) {
-                result[i] = output.getDouble(0, i);
-            }
+            double[] result = networkOpt.get().predict(norm[0]);
             log.debug("NN predictions for user {}: {}", userId, Arrays.toString(result));
             return result;
         } catch (Exception e) {

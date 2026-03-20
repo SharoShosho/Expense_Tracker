@@ -95,28 +95,22 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- Deeplearning4j Core -->
+        <!-- DL4J + ND4J -->
         <dependency>
             <groupId>org.deeplearning4j</groupId>
             <artifactId>deeplearning4j-core</artifactId>
             <version>${dl4j.version}</version>
         </dependency>
-
-        <!-- Deeplearning4j Neural Network -->
         <dependency>
             <groupId>org.deeplearning4j</groupId>
             <artifactId>deeplearning4j-nn</artifactId>
             <version>${dl4j.version}</version>
         </dependency>
-
-        <!-- ND4J Native Platform (CPU backend) -->
         <dependency>
             <groupId>org.nd4j</groupId>
             <artifactId>nd4j-native-platform</artifactId>
             <version>${dl4j.version}</version>
         </dependency>
-
-        <!-- ND4J API -->
         <dependency>
             <groupId>org.nd4j</groupId>
             <artifactId>nd4j-api</artifactId>
