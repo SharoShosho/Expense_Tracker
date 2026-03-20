@@ -41,6 +41,9 @@ export default function Navigation() {
           <Link to="/statistics" className={`${isActive('/statistics')} text-sm sm:text-base`}>
             Statistics
           </Link>
+          <Link to="/budget/setup" className={`${isActive('/budget/setup')} text-sm sm:text-base`}>
+            Budgets
+          </Link>
           <Link to="/ai/tips" className={`${isActive('/ai/tips')} text-sm sm:text-base`}>
             AI Tips
           </Link>
