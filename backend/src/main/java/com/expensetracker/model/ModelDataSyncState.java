@@ -5,42 +5,28 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import org.springframework.data.annotation.Id;
-import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Document(collection = "expenses")
-public class Expense {
+@Document(collection = "modelDataSyncState")
+public class ModelDataSyncState {
 
     @Id
     private String id;
 
-    @Indexed
+    @Indexed(unique = true)
     private String userId;
 
-    private BigDecimal amount;
-
-    private String category;
-
-    private String description;
-
-    private LocalDate date;
-
-    // Soft delete fields
-    private boolean isDeleted;
-    private LocalDateTime deletedAt;
-    private String deletedBy;
-
-    // Timestamps
-    @CreatedDate
+    private int pendingChangeCount;
+    private LocalDateTime lastSyncedAt;
+    private LocalDateTime lastChangeAt;
+    private boolean needsImmediateRetrain;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

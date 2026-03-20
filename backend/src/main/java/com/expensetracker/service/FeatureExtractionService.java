@@ -93,7 +93,7 @@ public class FeatureExtractionService {
     public double[] extractFeatures(String userId, YearMonth yearMonth) {
         LocalDate start = yearMonth.atDay(1);
         LocalDate end = yearMonth.atEndOfMonth();
-        List<Expense> expenses = expenseRepository.findByUserIdAndDateBetween(userId, start, end);
+        List<Expense> expenses = expenseRepository.findByUserIdAndIsDeletedFalseAndDateBetween(userId, start, end);
 
         double[] features = new double[FEATURE_SIZE];
 
@@ -121,7 +121,7 @@ public class FeatureExtractionService {
         YearMonth prevMonth = yearMonth.minusMonths(1);
         LocalDate prevStart = prevMonth.atDay(1);
         LocalDate prevEnd = prevMonth.atEndOfMonth();
-        List<Expense> prevExpenses = expenseRepository.findByUserIdAndDateBetween(userId, prevStart, prevEnd);
+        List<Expense> prevExpenses = expenseRepository.findByUserIdAndIsDeletedFalseAndDateBetween(userId, prevStart, prevEnd);
         double prevTotal = prevExpenses.stream()
                 .mapToDouble(e -> e.getAmount() != null ? e.getAmount().doubleValue() : 0.0)
                 .sum();
@@ -143,7 +143,7 @@ public class FeatureExtractionService {
 
         LocalDate start = yearMonth.atDay(1);
         LocalDate end = yearMonth.atEndOfMonth();
-        List<Expense> expenses = expenseRepository.findByUserIdAndDateBetween(userId, start, end);
+        List<Expense> expenses = expenseRepository.findByUserIdAndIsDeletedFalseAndDateBetween(userId, start, end);
 
         double total = expenses.stream()
                 .mapToDouble(e -> e.getAmount() != null ? e.getAmount().doubleValue() : 0.0)
