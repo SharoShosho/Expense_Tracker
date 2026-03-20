@@ -64,12 +64,6 @@ public class SavingTipsEngine {
     @Autowired(required = false)
     private FeatureExtractionService featureExtractionService;
 
-    @Autowired(required = false)
-    private NNTipGenerator nnTipGenerator;
-
-    @Autowired(required = false)
-    private TipRanker tipRanker;
-
     // ──────────────────────────────────────────────────────────────────────────
     // Type 1: Spending Pattern Analysis
     // ──────────────────────────────────────────────────────────────────────────
@@ -104,7 +98,7 @@ public class SavingTipsEngine {
 
         List<SavingTipDTO> tips = buildSpendingPatternTips(categories, totalSpent, totalBudget);
         double[] nnOutput = getNNPredictions(userId);
-        tips = applyNNPipeline(userId, tips, nnOutput, NN_IDX_SPENDING_PATTERN);
+        tips = enhanceTipsWithNNPredictions(tips, nnOutput, NN_IDX_SPENDING_PATTERN);
 
         double budgetUsage = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
 
@@ -257,7 +251,7 @@ public class SavingTipsEngine {
 
         List<SavingTipDTO> tips = buildBehavioralTips(weekdayAvg, weekendAvg, impulseDays, impulseCount, peakDay);
         double[] nnOutput = getNNPredictions(userId);
-        tips = applyNNPipeline(userId, tips, nnOutput, NN_IDX_BEHAVIORAL);
+        tips = enhanceTipsWithNNPredictions(tips, nnOutput, NN_IDX_BEHAVIORAL);
 
         return BehavioralAnalysisDTO.builder()
                 .dailyTransactionCount((int) (expenses.size() / Math.max(daysInMonth, 1)))
@@ -411,7 +405,7 @@ public class SavingTipsEngine {
                 .avgSpendingByCategory(avgPercentages)
                 .strengths(strengths)
                 .weaknesses(weaknesses)
-                .tips(applyNNPipeline(userId, tips, getNNPredictions(userId), NN_IDX_BENCHMARKING))
+                .tips(enhanceTipsWithNNPredictions(tips, getNNPredictions(userId), NN_IDX_BENCHMARKING))
                 .build();
     }
 
@@ -457,7 +451,7 @@ public class SavingTipsEngine {
         }
 
         List<SavingTipDTO> tips = buildPredictionTips(trendPercent, predictions);
-        tips = applyNNPipeline(userId, tips, getNNPredictions(userId), NN_IDX_PREDICTIONS);
+        tips = enhanceTipsWithNNPredictions(tips, getNNPredictions(userId), NN_IDX_PREDICTIONS);
 
         return PredictionDTO.builder()
                 .currentMonthSpending(round(currentMonthSpending))
@@ -577,7 +571,7 @@ public class SavingTipsEngine {
         double totalAnomalyAmount = anomalies.stream().mapToDouble(AnomalyItemDTO::getAmount).sum();
 
         List<SavingTipDTO> tips = buildAnomalyTips(anomalies, totalAnomalyAmount);
-        tips = applyNNPipeline(userId, tips, getNNPredictions(userId), NN_IDX_ANOMALIES);
+        tips = enhanceTipsWithNNPredictions(tips, getNNPredictions(userId), NN_IDX_ANOMALIES);
 
         return AnomalyDTO.builder()
                 .anomalyCount(anomalies.size())
@@ -669,7 +663,7 @@ public class SavingTipsEngine {
         }
 
         List<SavingTipDTO> tips = buildCategoryTips(categoryName, totalSpent, budget, budgetUsage, avgTx, txCount);
-        tips = applyNNPipeline(userId, tips, getNNPredictions(userId), NN_IDX_CATEGORY);
+        tips = enhanceTipsWithNNPredictions(tips, getNNPredictions(userId), NN_IDX_CATEGORY);
 
         return CategoryAnalysisDTO.builder()
                 .categoryName(categoryName)
@@ -803,7 +797,7 @@ public class SavingTipsEngine {
 
         List<SavingTipDTO> tips = buildWellnessTips(spendingDiscipline, budgetAdherence, savingRate,
                 financialAwareness, riskManagement, overall);
-        tips = applyNNPipeline(userId, tips, getNNPredictions(userId), NN_IDX_WELLNESS);
+        tips = enhanceTipsWithNNPredictions(tips, getNNPredictions(userId), NN_IDX_WELLNESS);
 
         return WellnessScoreDTO.builder()
                 .overallScore(overall)
@@ -993,7 +987,7 @@ public class SavingTipsEngine {
         }
 
         List<SavingTipDTO> tips = buildHistoryTips(trend, direction, unsustainable, avg);
-        tips = applyNNPipeline(userId, tips, getNNPredictions(userId), NN_IDX_HISTORY);
+        tips = enhanceTipsWithNNPredictions(tips, getNNPredictions(userId), NN_IDX_HISTORY);
 
         return HistoryTrendDTO.builder()
                 .monthlySpending(monthlySpending)
@@ -1315,35 +1309,6 @@ public class SavingTipsEngine {
                     userId, e.getMessage());
             return null;
         }
-    }
-
-    /**
-     * Full NN-enhanced tip pipeline:
-     * 1. Generate additional tips from NN output via {@link NNTipGenerator}.
-     * 2. Combine and rank rule-based + NN tips via {@link TipRanker}.
-     * 3. Fall back to the legacy {@link #enhanceTipsWithNNPredictions} when
-     *    either service is unavailable.
-     *
-     * @param userId   the authenticated user (used for personalisation)
-     * @param tips     rule-based tips produced by the analysis method
-     * @param nnOutput raw NN probability vector (may be null)
-     * @param nnIndex  index in {@code nnOutput} for this tip type
-     * @return final ranked tip list
-     */
-    List<SavingTipDTO> applyNNPipeline(String userId, List<SavingTipDTO> tips,
-                                        double[] nnOutput, int nnIndex) {
-        // Fall back to legacy behaviour when advanced services are not wired
-        if (nnTipGenerator == null || tipRanker == null) {
-            return enhanceTipsWithNNPredictions(tips, nnOutput, nnIndex);
-        }
-
-        List<SavingTipDTO> nnTips = nnTipGenerator.generateTipsFromNNOutput(userId, nnOutput);
-
-        // Only include the NN tip relevant to this specific tip-type index (safe bounds check)
-        List<SavingTipDTO> relevantNnTips = nnTips.size() > nnIndex
-                ? List.of(nnTips.get(nnIndex)) : List.of();
-
-        return tipRanker.rankFilterAndPersonalize(userId, tips, relevantNnTips, nnOutput);
     }
 
     /**
