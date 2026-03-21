@@ -2,11 +2,18 @@ import { useState, useEffect, useMemo } from 'react'
 import Navigation from '../components/Navigation'
 import StatisticsChart from '../components/StatisticsChart'
 import api from '../services/api'
+import { budgetService } from '../services/budgetService'
 import { useCurrencyConversion } from '../hooks/useCurrencyConversion'
 import { getErrorMessage } from '../services/errorService'
 
+const getCurrentMonth = () => {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
 export default function StatisticsPage() {
   const [stats, setStats] = useState(null)
+  const [budgetOverview, setBudgetOverview] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const {
@@ -19,9 +26,25 @@ export default function StatisticsPage() {
 
   useEffect(() => {
     const fetchStats = async () => {
+      setLoading(true)
+      setError('')
       try {
-        const response = await api.get('/statistics')
-        setStats(response.data)
+        const [statsResult, budgetResult] = await Promise.allSettled([
+          api.get('/statistics'),
+          budgetService.getBudgetStatus(getCurrentMonth()),
+        ])
+
+        if (statsResult.status === 'fulfilled') {
+          setStats(statsResult.value.data)
+        } else {
+          setError(getErrorMessage(statsResult.reason, 'Failed to load statistics'))
+        }
+
+        if (budgetResult.status === 'fulfilled') {
+          setBudgetOverview(budgetResult.value)
+        } else if (!statsResult || statsResult.status !== 'rejected') {
+          setError(getErrorMessage(budgetResult.reason, 'Budget statistics are temporarily unavailable'))
+        }
       } catch (err) {
         setError(getErrorMessage(err, 'Failed to load statistics'))
       } finally {
@@ -48,6 +71,24 @@ export default function StatisticsPage() {
     }
   }, [stats, convertFromBaseCurrency])
 
+  const convertedBudgetOverview = useMemo(() => {
+    if (!budgetOverview) {
+      return null
+    }
+
+    return {
+      ...budgetOverview,
+      totalBudget: convertFromBaseCurrency(budgetOverview.totalBudget),
+      totalSpent: convertFromBaseCurrency(budgetOverview.totalSpent),
+      categories: (budgetOverview.categories || []).map((category) => ({
+        ...category,
+        budgetAmount: convertFromBaseCurrency(category.budgetAmount),
+        spentAmount: convertFromBaseCurrency(category.spentAmount),
+        remainingAmount: convertFromBaseCurrency(category.remainingAmount),
+      })),
+    }
+  }, [budgetOverview, convertFromBaseCurrency])
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Navigation />
@@ -73,7 +114,11 @@ export default function StatisticsPage() {
         {loading ? (
           <div className="text-center py-12 text-gray-400 dark:text-gray-500">Loading statistics...</div>
         ) : convertedStats ? (
-          <StatisticsChart stats={convertedStats} currency={currency} />
+          <StatisticsChart
+            stats={convertedStats}
+            budgetOverview={convertedBudgetOverview}
+            currency={currency}
+          />
         ) : (
           <div className="text-center py-12 text-gray-400 dark:text-gray-500">
             <p className="text-4xl mb-3">📊</p>
