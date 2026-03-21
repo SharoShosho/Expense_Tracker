@@ -44,14 +44,14 @@ public class ExpenseService {
                 .flatMap(Optional::stream)
                 .reduce(expense -> true, Predicate::and);
 
-        return expenseRepository.findByUserId(userId).stream()
+        return expenseRepository.findByUserIdAndIsDeletedFalse(userId).stream()
                 .filter(combinedFilter)
                 .collect(Collectors.toList());
     }
 
     public Expense getExpense(String userId, String id) {
         return expenseRepository.findById(id)
-                .filter(expense -> userId.equals(expense.getUserId()))
+                .filter(expense -> userId.equals(expense.getUserId()) && !expense.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Expense", id));
     }
 
@@ -99,7 +99,7 @@ public class ExpenseService {
     }
 
     public Map<String, Object> getStatistics(String userId) {
-        List<Expense> expenses = expenseRepository.findByUserId(userId);
+        List<Expense> expenses = expenseRepository.findByUserIdAndIsDeletedFalse(userId);
 
         List<Expense> validExpenses = expenses.stream()
                 .filter(expense -> expense.getAmount() != null)

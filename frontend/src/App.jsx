@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import Dashboard from './pages/Dashboard'
+import ExpensesPage from './pages/ExpensesPage'
 import StatisticsPage from './pages/StatisticsPage'
 import BudgetPage from './pages/BudgetPage'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -23,6 +24,14 @@ const router = createBrowserRouter(
   [
     { path: '/login', element: <LoginPage /> },
     { path: '/register', element: <RegisterPage /> },
+    {
+      path: '/expenses',
+      element: (
+        <Protected>
+          <ExpensesPage />
+        </Protected>
+      ),
+    },
     {
       path: '/dashboard',
       element: (
@@ -56,7 +65,7 @@ const router = createBrowserRouter(
     { path: '/ai/tips/category/:categoryName', element: <Protected><CategoryDeepDive /></Protected> },
     { path: '/ai/wellness', element: <Protected><WellnessScore /></Protected> },
     { path: '/ai/tips/history-trend', element: <Protected><HistoryTrend /></Protected> },
-    { path: '/', element: <Navigate to="/dashboard" replace /> },
+    { path: '/', element: <Navigate to="/expenses" replace /> },
   ],
   {
     future: {

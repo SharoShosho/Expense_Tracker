@@ -12,9 +12,11 @@ const CATEGORY_COLORS = {
   Other: 'bg-gray-100 text-gray-800',
 }
 
-export default function ExpenseList({ expenses, onEdit, onDelete, currency = 'EUR' }) {
+export default function ExpenseList({ expenses, onEdit, onDelete, onBulkDelete, currency = 'EUR' }) {
   const [deletingId, setDeletingId] = useState(null)
   const [pendingDeleteId, setPendingDeleteId] = useState(null)
+  const [selectedIds, setSelectedIds] = useState([])
+  const [bulkActionInProgress, setBulkActionInProgress] = useState(false)
 
   const openDeleteConfirm = (id) => {
     setPendingDeleteId(id)
@@ -24,15 +26,35 @@ export default function ExpenseList({ expenses, onEdit, onDelete, currency = 'EU
     setPendingDeleteId(null)
   }
 
-  const confirmDelete = async () => {
+  const toggleSelected = (id) => {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((v) => v !== id) : [...prev, id]))
+  }
+
+  const toggleSelectAll = () => {
+    setSelectedIds((prev) => (prev.length === expenses.length ? [] : expenses.map((expense) => expense.id)))
+  }
+
+  const confirmDelete = async (mode) => {
     if (!pendingDeleteId) return
     const id = pendingDeleteId
     setPendingDeleteId(null)
     setDeletingId(id)
     try {
-      await onDelete(id)
+      await onDelete(id, mode)
+      setSelectedIds((prev) => prev.filter((value) => value !== id))
     } finally {
       setDeletingId(null)
+    }
+  }
+
+  const runBulkDelete = async (mode) => {
+    if (!selectedIds.length || !onBulkDelete) return
+    setBulkActionInProgress(true)
+    try {
+      await onBulkDelete(selectedIds, mode)
+      setSelectedIds([])
+    } finally {
+      setBulkActionInProgress(false)
     }
   }
 
@@ -47,6 +69,36 @@ export default function ExpenseList({ expenses, onEdit, onDelete, currency = 'EU
 
   return (
     <>
+      <div className="mb-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3 sm:p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <label className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+            <input
+              type="checkbox"
+              checked={expenses.length > 0 && selectedIds.length === expenses.length}
+              onChange={toggleSelectAll}
+              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            Select all ({selectedIds.length} selected)
+          </label>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <button
+              onClick={() => runBulkDelete('soft')}
+              disabled={!selectedIds.length || bulkActionInProgress}
+              className="px-3 py-2 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700 text-sm transition disabled:opacity-50"
+            >
+              {bulkActionInProgress ? 'Working...' : 'Soft delete selected'}
+            </button>
+            <button
+              onClick={() => runBulkDelete('hard')}
+              disabled={!selectedIds.length || bulkActionInProgress}
+              className="px-3 py-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 text-sm transition disabled:opacity-50"
+            >
+              {bulkActionInProgress ? 'Working...' : 'Delete selected permanently'}
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div className="space-y-3">
         {expenses.map((expense) => (
           <div
@@ -54,6 +106,12 @@ export default function ExpenseList({ expenses, onEdit, onDelete, currency = 'EU
             className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-3 sm:p-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between hover:shadow-sm transition"
           >
             <div className="flex items-start sm:items-center gap-4 w-full min-w-0">
+              <input
+                type="checkbox"
+                checked={selectedIds.includes(expense.id)}
+                onChange={() => toggleSelected(expense.id)}
+                className="mt-1 sm:mt-0 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
               <div className="flex flex-col">
                 <span className="font-semibold text-sm sm:text-base text-gray-900 dark:text-gray-100">
                   {formatCurrency(expense.amount, currency)}
@@ -82,7 +140,7 @@ export default function ExpenseList({ expenses, onEdit, onDelete, currency = 'EU
               </button>
               <button
                 onClick={() => openDeleteConfirm(expense.id)}
-                disabled={deletingId === expense.id}
+                disabled={deletingId === expense.id || bulkActionInProgress}
                 className="flex-1 sm:flex-none text-sm px-3 py-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 transition disabled:opacity-50"
               >
                 {deletingId === expense.id ? '...' : 'Delete'}
@@ -98,7 +156,7 @@ export default function ExpenseList({ expenses, onEdit, onDelete, currency = 'EU
           <div className="relative w-full max-w-md rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-2xl p-5 sm:p-6">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Delete expense?</h3>
             <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-              This action cannot be undone. The expense will be removed permanently.
+              Choose how to delete this expense.
             </p>
             <div className="mt-5 flex gap-3 justify-end">
               <button
@@ -108,10 +166,16 @@ export default function ExpenseList({ expenses, onEdit, onDelete, currency = 'EU
                 Cancel
               </button>
               <button
-                onClick={confirmDelete}
+                onClick={() => confirmDelete('soft')}
+                className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-medium transition"
+              >
+                Soft delete
+              </button>
+              <button
+                onClick={() => confirmDelete('hard')}
                 className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium transition"
               >
-                Delete
+                Delete permanently
               </button>
             </div>
           </div>

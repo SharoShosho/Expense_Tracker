@@ -15,6 +15,8 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
@@ -53,12 +55,7 @@ public class DataManagementService {
      * Automatically evaluates whether model retraining is needed.
      */
     public void softDeleteExpense(String expenseId, String userId) {
-        Expense expense = expenseRepository.findById(expenseId)
-                .orElseThrow(() -> new ResourceNotFoundException("Expense", expenseId));
-
-        if (!expense.getUserId().equals(userId)) {
-            throw new IllegalArgumentException("Unauthorized: expense " + expenseId + " does not belong to user");
-        }
+        Expense expense = requireOwnedExpense(expenseId, userId);
 
         expense.setDeleted(true);
         expense.setDeletedAt(LocalDateTime.now());
@@ -73,17 +70,26 @@ public class DataManagementService {
     }
 
     /**
+     * Permanently delete one expense and update model-sync state.
+     */
+    public void hardDeleteExpense(String expenseId, String userId) {
+        Expense expense = requireOwnedExpense(expenseId, userId);
+        expenseRepository.delete(expense);
+
+        logChange(userId, expenseId, "HARD_DELETE", 1);
+        checkAndTriggerRetraining(userId);
+
+        log.info("Hard deleted expense {} for user {}", expenseId, userId);
+    }
+
+    /**
      * Bulk soft-delete — mark multiple expenses as deleted in one pass.
      */
     public void bulkSoftDelete(List<String> expenseIds, String userId) {
-        List<Expense> expenses = expenseRepository.findAllById(expenseIds);
-
-        expenses.forEach(e -> {
-            if (!e.getUserId().equals(userId)) {
-                throw new IllegalArgumentException(
-                        "Unauthorized: expense " + e.getId() + " does not belong to user");
-            }
-        });
+        if (expenseIds == null || expenseIds.isEmpty()) {
+            return;
+        }
+        List<Expense> expenses = requireOwnedExpenses(expenseIds, userId);
 
         LocalDateTime now = LocalDateTime.now();
         expenses.forEach(e -> {
@@ -102,9 +108,28 @@ public class DataManagementService {
     }
 
     /**
+     * Permanently delete many expenses in one operation.
+     */
+    public void bulkHardDelete(List<String> expenseIds, String userId) {
+        if (expenseIds == null || expenseIds.isEmpty()) {
+            return;
+        }
+        List<Expense> expenses = requireOwnedExpenses(expenseIds, userId);
+        expenseRepository.deleteAll(expenses);
+
+        logChange(userId, "BULK", "HARD_DELETE", expenses.size());
+        checkAndTriggerRetraining(userId);
+
+        log.info("Bulk hard deleted {} expenses for user {}", expenses.size(), userId);
+    }
+
+    /**
      * Bulk update — update category, amount, date, or description on multiple expenses.
      */
     public void bulkUpdateExpenses(List<Expense> updates, String userId) {
+        if (updates == null || updates.isEmpty()) {
+            return;
+        }
         List<Expense> toUpdate = expenseRepository.findAllById(
                 updates.stream().map(Expense::getId).collect(Collectors.toList()));
 
@@ -120,10 +145,10 @@ public class DataManagementService {
                         "Unauthorized: expense " + existing.getId() + " does not belong to user");
             }
 
-            if (update.getCategory() != null)    existing.setCategory(update.getCategory());
-            if (update.getAmount() != null)       existing.setAmount(update.getAmount());
-            if (update.getDate() != null)         existing.setDate(update.getDate());
-            if (update.getDescription() != null)  existing.setDescription(update.getDescription());
+            applyIfPresent(update.getCategory(), existing::setCategory);
+            applyIfPresent(update.getAmount(), existing::setAmount);
+            applyIfPresent(update.getDate(), existing::setDate);
+            applyIfPresent(update.getDescription(), existing::setDescription);
             existing.setUpdatedAt(LocalDateTime.now());
         });
 
@@ -139,12 +164,7 @@ public class DataManagementService {
      * Restore a soft-deleted expense.
      */
     public void restoreExpense(String expenseId, String userId) {
-        Expense expense = expenseRepository.findById(expenseId)
-                .orElseThrow(() -> new ResourceNotFoundException("Expense", expenseId));
-
-        if (!expense.getUserId().equals(userId)) {
-            throw new IllegalArgumentException("Unauthorized: expense " + expenseId + " does not belong to user");
-        }
+        Expense expense = requireOwnedExpense(expenseId, userId);
 
         if (!expense.isDeleted()) {
             throw new IllegalArgumentException("Expense " + expenseId + " is not deleted");
@@ -167,6 +187,40 @@ public class DataManagementService {
      */
     public List<Expense> getActiveExpenses(String userId) {
         return expenseRepository.findByUserIdAndIsDeletedFalse(userId);
+    }
+
+    /**
+     * Get all soft-deleted expenses for a user.
+     */
+    public List<Expense> getDeletedExpenses(String userId) {
+        return expenseRepository.findByUserIdAndIsDeletedTrue(userId);
+    }
+
+    /**
+     * Restore multiple soft-deleted expenses.
+     */
+    public void bulkRestoreExpenses(List<String> expenseIds, String userId) {
+        if (expenseIds == null || expenseIds.isEmpty()) {
+            return;
+        }
+        List<Expense> expenses = requireOwnedExpenses(expenseIds, userId);
+        LocalDateTime now = LocalDateTime.now();
+
+        expenses.stream()
+                .filter(Expense::isDeleted)
+                .forEach(expense -> {
+                    expense.setDeleted(false);
+                    expense.setDeletedAt(null);
+                    expense.setDeletedBy(null);
+                    expense.setUpdatedAt(now);
+                });
+
+        expenseRepository.saveAll(expenses);
+
+        logChange(userId, "BULK", "RESTORE", expenses.size());
+        checkAndTriggerRetraining(userId);
+
+        log.info("Bulk restored {} expenses for user {}", expenses.size(), userId);
     }
 
     /**
@@ -242,5 +296,29 @@ public class DataManagementService {
                 .build();
 
         changeLogRepository.save(changeLog);
+    }
+
+    private Expense requireOwnedExpense(String expenseId, String userId) {
+        Expense expense = expenseRepository.findById(expenseId)
+                .orElseThrow(() -> new ResourceNotFoundException("Expense", expenseId));
+        requireOwnership(expense, userId);
+        return expense;
+    }
+
+    private List<Expense> requireOwnedExpenses(List<String> expenseIds, String userId) {
+        List<Expense> expenses = expenseRepository.findAllById(expenseIds);
+        expenses.forEach(expense -> requireOwnership(expense, userId));
+        return expenses;
+    }
+
+    private void requireOwnership(Expense expense, String userId) {
+        if (!expense.getUserId().equals(userId)) {
+            throw new IllegalArgumentException(
+                    "Unauthorized: expense " + expense.getId() + " does not belong to user");
+        }
+    }
+
+    private <T> void applyIfPresent(T value, Consumer<T> setter) {
+        Optional.ofNullable(value).ifPresent(setter);
     }
 }

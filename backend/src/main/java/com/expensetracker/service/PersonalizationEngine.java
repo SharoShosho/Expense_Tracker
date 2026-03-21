@@ -128,7 +128,7 @@ public class PersonalizationEngine {
         UserBehaviorProfile profile = loadOrCreateProfile(userId);
 
         LocalDate sixMonthsAgo = LocalDate.now().minusMonths(6);
-        List<Expense> expenses = expenseRepository.findByUserIdAndDateBetween(
+        List<Expense> expenses = expenseRepository.findByUserIdAndIsDeletedFalseAndDateBetween(
                 userId, sixMonthsAgo, LocalDate.now());
         List<Budget> budgets = budgetRepository.findByUserIdOrderByCategoryAsc(userId);
 
@@ -173,7 +173,7 @@ public class PersonalizationEngine {
         UserBehaviorProfile profile = loadOrCreateProfile(userId);
 
         LocalDate sixMonthsAgo = LocalDate.now().minusMonths(6);
-        List<Expense> expenses = expenseRepository.findByUserIdAndDateBetween(
+        List<Expense> expenses = expenseRepository.findByUserIdAndIsDeletedFalseAndDateBetween(
                 userId, sixMonthsAgo, LocalDate.now());
         List<Budget> budgets = budgetRepository.findByUserIdOrderByCategoryAsc(userId);
 

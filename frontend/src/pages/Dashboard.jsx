@@ -3,7 +3,7 @@ import Navigation from '../components/Navigation'
 import ExpenseList from '../components/ExpenseList'
 import ExpenseForm from '../components/ExpenseForm'
 import BudgetWidget from '../components/Budget/BudgetWidget'
-import api from '../services/api'
+import { expenseService } from '../services/expenseService'
 import {
   formatCurrency,
 } from '../services/currencyService'
@@ -48,9 +48,8 @@ export default function Dashboard() {
     setError('')
     try {
       const params = buildExpenseQueryParams(filters)
-
-      const response = await api.get('/expenses', { params })
-      setExpenses(response.data)
+      const data = await expenseService.listActive(params)
+      setExpenses(data)
     } catch (err) {
       setError(getErrorMessage(err, 'Failed to load expenses'))
     } finally {
@@ -73,7 +72,7 @@ export default function Dashboard() {
   const handleCreate = async (data) => {
     try {
       const normalizedAmount = await convertToBaseCurrency(data.amount)
-      await api.post('/expenses', { ...data, amount: normalizedAmount })
+      await expenseService.create({ ...data, amount: normalizedAmount })
       setShowForm(false)
       setExpenseVersion((v) => v + 1)
       await fetchExpenses()
@@ -86,7 +85,7 @@ export default function Dashboard() {
   const handleUpdate = async (data) => {
     try {
       const normalizedAmount = await convertToBaseCurrency(data.amount)
-      await api.put(`/expenses/${editingExpense.id}`, { ...data, amount: normalizedAmount })
+      await expenseService.update(editingExpense.id, { ...data, amount: normalizedAmount })
       setEditingExpense(null)
       setExpenseVersion((v) => v + 1)
       await fetchExpenses()
@@ -96,13 +95,26 @@ export default function Dashboard() {
     }
   }
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id, mode = 'hard') => {
     try {
-      await api.delete(`/expenses/${id}`)
+      await expenseService.deleteOne(id, mode)
       setExpenseVersion((v) => v + 1)
       await fetchExpenses()
     } catch (err) {
       setError(getErrorMessage(err, 'Failed to delete expense'))
+      throw err
+    }
+  }
+
+  const handleBulkDelete = async (ids, mode = 'soft') => {
+    if (!Array.isArray(ids) || ids.length === 0) return
+
+    try {
+      await expenseService.deleteMany(ids, mode)
+      setExpenseVersion((v) => v + 1)
+      await fetchExpenses()
+    } catch (err) {
+      setError(getErrorMessage(err, 'Failed to delete selected expenses'))
       throw err
     }
   }
@@ -203,6 +215,7 @@ export default function Dashboard() {
             currency={currency}
             onEdit={(expense) => { setEditingExpense(expense); setShowForm(false) }}
             onDelete={handleDelete}
+            onBulkDelete={handleBulkDelete}
           />
         )}
       </main>

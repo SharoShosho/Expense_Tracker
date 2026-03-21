@@ -40,6 +40,27 @@ public class SavingTipsEngine {
 
     // Benchmark percentages of total spending (industry-standard budgeting guidelines)
     private static final Map<String, Double> BENCHMARK_PERCENTAGES = new LinkedHashMap<>();
+    private static final List<ThresholdScoreRule> SPENDING_DISCIPLINE_RULES = List.of(
+            new ThresholdScoreRule(0.7, 100),
+            new ThresholdScoreRule(0.8, 90),
+            new ThresholdScoreRule(0.9, 80),
+            new ThresholdScoreRule(1.0, 65),
+            new ThresholdScoreRule(1.1, 45),
+            new ThresholdScoreRule(1.2, 30)
+    );
+    private static final List<ThresholdScoreRule> SAVING_RATE_RULES = List.of(
+            new ThresholdScoreRule(0.3, 100),
+            new ThresholdScoreRule(0.2, 85),
+            new ThresholdScoreRule(0.1, 70),
+            new ThresholdScoreRule(0.0, 50),
+            new ThresholdScoreRule(-0.1, 30)
+    );
+    private static final List<WellnessBand> WELLNESS_BANDS = List.of(
+            new WellnessBand(80, "EXCELLENT", "100 - Perfect Score", 100),
+            new WellnessBand(60, "GOOD", "80 - Excellent", 80),
+            new WellnessBand(40, "FAIR", "60 - Good", 60),
+            new WellnessBand(0, "POOR", "40 - Fair", 40)
+    );
 
     static {
         BENCHMARK_PERCENTAGES.put("Food", 25.0);
@@ -537,7 +558,7 @@ public class SavingTipsEngine {
     // ──────────────────────────────────────────────────────────────────────────
 
     public AnomalyDTO detectAnomalies(String userId) {
-        List<Expense> allExpenses = expenseRepository.findByUserId(userId);
+        List<Expense> allExpenses = expenseRepository.findByUserIdAndIsDeletedFalse(userId);
         YearMonth currentMonth = YearMonth.now();
         List<Expense> recentExpenses = getMonthlyExpenses(userId, currentMonth);
 
@@ -634,13 +655,13 @@ public class SavingTipsEngine {
 
     public CategoryAnalysisDTO analyzeCategoryDeepDive(String userId, String categoryName) {
         YearMonth currentMonth = YearMonth.now();
-        List<Expense> allCategoryExpenses = expenseRepository
-                .findByUserIdAndCategory(userId, categoryName);
-
-        List<Expense> monthlyExpenses = allCategoryExpenses.stream()
-                .filter(e -> e.getDate() != null
-                        && YearMonth.from(e.getDate()).equals(currentMonth))
-                .collect(Collectors.toList());
+        List<Expense> monthlyExpenses = expenseRepository
+                .findByUserIdAndCategoryIgnoreCaseAndIsDeletedFalseAndDateBetween(
+                        userId,
+                        categoryName,
+                        currentMonth.atDay(1),
+                        currentMonth.atEndOfMonth()
+                );
 
         double totalSpent = sumExpenses(monthlyExpenses);
         double budget = budgetRepository
@@ -783,26 +804,7 @@ public class SavingTipsEngine {
 
         int overall = (spendingDiscipline + budgetAdherence + savingRate + financialAwareness + riskManagement) / 5;
 
-        String label;
-        String nextMilestone;
-        int pointsToNext;
-        if (overall >= 80) {
-            label = "EXCELLENT";
-            nextMilestone = "100 – Perfect Score";
-            pointsToNext = 100 - overall;
-        } else if (overall >= 60) {
-            label = "GOOD";
-            nextMilestone = "80 – Excellent";
-            pointsToNext = 80 - overall;
-        } else if (overall >= 40) {
-            label = "FAIR";
-            nextMilestone = "60 – Good";
-            pointsToNext = 60 - overall;
-        } else {
-            label = "POOR";
-            nextMilestone = "40 – Fair";
-            pointsToNext = 40 - overall;
-        }
+        WellnessBand wellnessBand = resolveWellnessBand(overall);
 
         List<SavingTipDTO> tips = buildWellnessTips(spendingDiscipline, budgetAdherence, savingRate,
                 financialAwareness, riskManagement, overall);
@@ -815,9 +817,9 @@ public class SavingTipsEngine {
                 .savingRateScore(savingRate)
                 .financialAwarenessScore(financialAwareness)
                 .riskManagementScore(riskManagement)
-                .scoreLabel(label)
-                .nextMilestone(nextMilestone)
-                .pointsToNextMilestone(pointsToNext)
+                .scoreLabel(wellnessBand.label())
+                .nextMilestone(wellnessBand.nextMilestone())
+                .pointsToNextMilestone(Math.max(0, wellnessBand.targetScore() - overall))
                 .tips(tips)
                 .build();
     }
@@ -825,14 +827,7 @@ public class SavingTipsEngine {
     private int calculateSpendingDisciplineScore(double totalSpent, double totalBudget,
                                                   List<Budget> budgets, List<Expense> expenses) {
         if (totalBudget <= 0) return 50;
-        double ratio = totalSpent / totalBudget;
-        if (ratio <= 0.7) return 100;
-        if (ratio <= 0.8) return 90;
-        if (ratio <= 0.9) return 80;
-        if (ratio <= 1.0) return 65;
-        if (ratio <= 1.1) return 45;
-        if (ratio <= 1.2) return 30;
-        return 10;
+        return resolveScoreByUpperThreshold(totalSpent / totalBudget, SPENDING_DISCIPLINE_RULES, 10);
     }
 
     private int calculateBudgetAdherenceScore(String userId, YearMonth month, List<Budget> budgets) {
@@ -852,12 +847,7 @@ public class SavingTipsEngine {
         if (totalBudget <= 0) return 30;
         double remaining = totalBudget - totalSpent;
         double savingRate = remaining / totalBudget;
-        if (savingRate >= 0.3) return 100;
-        if (savingRate >= 0.2) return 85;
-        if (savingRate >= 0.1) return 70;
-        if (savingRate >= 0) return 50;
-        if (savingRate >= -0.1) return 30;
-        return 10;
+        return resolveScoreByLowerThreshold(savingRate, SAVING_RATE_RULES, 10);
     }
 
     private int calculateFinancialAwarenessScore(List<Budget> budgets, List<Expense> expenses) {
@@ -1143,7 +1133,7 @@ public class SavingTipsEngine {
     // ──────────────────────────────────────────────────────────────────────────
 
     private List<Expense> getMonthlyExpenses(String userId, YearMonth month) {
-        return expenseRepository.findByUserIdAndDateBetween(
+        return expenseRepository.findByUserIdAndIsDeletedFalseAndDateBetween(
                 userId, month.atDay(1), month.atEndOfMonth());
     }
 
@@ -1216,25 +1206,14 @@ public class SavingTipsEngine {
                     double spent = spentByCategory.getOrDefault(category, 0.0);
                     double budget = budgetByCategory.getOrDefault(category.toLowerCase(Locale.ROOT), 0.0);
                     double pct = totalSpent > 0 ? (spent / totalSpent) * 100 : 0;
-                    String status;
-                    double overAmount = 0;
-                    if (budget <= 0) {
-                        status = "NO_BUDGET";
-                    } else if (spent > budget) {
-                        status = "EXCEEDED";
-                        overAmount = spent - budget;
-                    } else if (spent >= budget * 0.8) {
-                        status = "NEAR_LIMIT";
-                    } else {
-                        status = "SAFE";
-                    }
+                    CategoryBudgetStatus budgetStatus = resolveBudgetStatus(spent, budget);
                     return new CategorySpendingDTO(
                             category,
                             BigDecimal.valueOf(round(spent)),
                             round(pct),
                             BigDecimal.valueOf(round(budget)),
-                            status,
-                            round(overAmount)
+                            budgetStatus.status(),
+                            round(budgetStatus.overAmount())
                     );
                 })
                 .filter(c -> c.getAmount().doubleValue() > 0 || c.getBudget().doubleValue() > 0)
@@ -1281,6 +1260,42 @@ public class SavingTipsEngine {
     private String capitalizeFirst(String s) {
         if (s == null || s.isEmpty()) return s;
         return s.substring(0, 1).toUpperCase(Locale.ROOT) + s.substring(1);
+    }
+
+    private WellnessBand resolveWellnessBand(int overallScore) {
+        return WELLNESS_BANDS.stream()
+                .filter(band -> overallScore >= band.minScore())
+                .findFirst()
+                .orElse(WELLNESS_BANDS.get(WELLNESS_BANDS.size() - 1));
+    }
+
+    private int resolveScoreByUpperThreshold(double value, List<ThresholdScoreRule> rules, int fallbackScore) {
+        return rules.stream()
+                .filter(rule -> value <= rule.threshold())
+                .map(ThresholdScoreRule::score)
+                .findFirst()
+                .orElse(fallbackScore);
+    }
+
+    private int resolveScoreByLowerThreshold(double value, List<ThresholdScoreRule> rules, int fallbackScore) {
+        return rules.stream()
+                .filter(rule -> value >= rule.threshold())
+                .map(ThresholdScoreRule::score)
+                .findFirst()
+                .orElse(fallbackScore);
+    }
+
+    private CategoryBudgetStatus resolveBudgetStatus(double spent, double budget) {
+        if (budget <= 0) {
+            return new CategoryBudgetStatus("NO_BUDGET", 0);
+        }
+        if (spent > budget) {
+            return new CategoryBudgetStatus("EXCEEDED", spent - budget);
+        }
+        if (spent >= budget * 0.8) {
+            return new CategoryBudgetStatus("NEAR_LIMIT", 0);
+        }
+        return new CategoryBudgetStatus("SAFE", 0);
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -1391,4 +1406,10 @@ public class SavingTipsEngine {
         }
         return tips;
     }
+
+    private record ThresholdScoreRule(double threshold, int score) {}
+
+    private record WellnessBand(int minScore, String label, String nextMilestone, int targetScore) {}
+
+    private record CategoryBudgetStatus(String status, double overAmount) {}
 }

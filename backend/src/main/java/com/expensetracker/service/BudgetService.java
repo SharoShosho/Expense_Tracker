@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 @Service
@@ -25,6 +26,10 @@ public class BudgetService {
 
     private static final BigDecimal NEAR_LIMIT_RATIO = new BigDecimal("0.80");
     private static final BigDecimal HUNDRED = new BigDecimal("100");
+    private static final List<StatusRule> STATUS_RULES = List.of(
+            new StatusRule(ratio -> ratio.compareTo(BigDecimal.ONE) >= 0, "EXCEEDED"),
+            new StatusRule(ratio -> ratio.compareTo(NEAR_LIMIT_RATIO) >= 0, "NEAR_LIMIT")
+    );
 
     @Autowired
     private BudgetRepository budgetRepository;
@@ -108,7 +113,7 @@ public class BudgetService {
     }
 
     private Map<String, BigDecimal> getMonthlySpentByCategory(String userId, YearMonth month) {
-        List<Expense> expenses = expenseRepository.findByUserIdAndDateBetween(
+        List<Expense> expenses = expenseRepository.findByUserIdAndIsDeletedFalseAndDateBetween(
                 userId,
                 month.atDay(1),
                 month.atEndOfMonth()
@@ -130,13 +135,11 @@ public class BudgetService {
     }
 
     private String resolveStatus(BigDecimal usageRatio) {
-        if (usageRatio.compareTo(BigDecimal.ONE) >= 0) {
-            return "EXCEEDED";
-        }
-        if (usageRatio.compareTo(NEAR_LIMIT_RATIO) >= 0) {
-            return "NEAR_LIMIT";
-        }
-        return "SAFE";
+        return STATUS_RULES.stream()
+                .filter(rule -> rule.matches(usageRatio))
+                .map(StatusRule::status)
+                .findFirst()
+                .orElse("SAFE");
     }
 
     private BudgetDTO toDto(Budget budget) {
@@ -159,6 +162,12 @@ public class BudgetService {
 
     private String normalizeKey(String category) {
         return normalizeCategory(category).toLowerCase(Locale.ROOT);
+    }
+
+    private record StatusRule(Predicate<BigDecimal> matcher, String status) {
+        boolean matches(BigDecimal ratio) {
+            return matcher.test(ratio);
+        }
     }
 }
 

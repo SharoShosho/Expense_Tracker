@@ -41,6 +41,16 @@ public class DataManagementController {
         return ResponseEntity.ok(Map.of("message", "Expense soft deleted"));
     }
 
+    @DeleteMapping("/expenses/{expenseId}/permanent")
+    public ResponseEntity<Map<String, String>> hardDeleteExpense(
+            @PathVariable String expenseId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        String userId = authenticatedUserService.resolveUserId(userDetails);
+        dataManagementService.hardDeleteExpense(expenseId, userId);
+        return ResponseEntity.ok(Map.of("message", "Expense permanently deleted"));
+    }
+
     @PostMapping("/expenses/bulk-delete")
     public ResponseEntity<Map<String, Object>> bulkSoftDelete(
             @RequestBody List<String> expenseIds,
@@ -50,6 +60,19 @@ public class DataManagementController {
         dataManagementService.bulkSoftDelete(expenseIds, userId);
         return ResponseEntity.ok(Map.of(
                 "message", "Expenses soft deleted",
+                "count", expenseIds.size()
+        ));
+    }
+
+    @PostMapping("/expenses/bulk-hard-delete")
+    public ResponseEntity<Map<String, Object>> bulkHardDelete(
+            @RequestBody List<String> expenseIds,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        String userId = authenticatedUserService.resolveUserId(userDetails);
+        dataManagementService.bulkHardDelete(expenseIds, userId);
+        return ResponseEntity.ok(Map.of(
+                "message", "Expenses permanently deleted",
                 "count", expenseIds.size()
         ));
     }
@@ -85,6 +108,19 @@ public class DataManagementController {
         return ResponseEntity.ok(Map.of("message", "Expense restored"));
     }
 
+    @PostMapping("/expenses/bulk-restore")
+    public ResponseEntity<Map<String, Object>> bulkRestoreExpenses(
+            @RequestBody List<String> expenseIds,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        String userId = authenticatedUserService.resolveUserId(userDetails);
+        dataManagementService.bulkRestoreExpenses(expenseIds, userId);
+        return ResponseEntity.ok(Map.of(
+                "message", "Expenses restored",
+                "count", expenseIds.size()
+        ));
+    }
+
     // ──────────────────────────────────────────────────────────────────────────
     // GET (Active expenses & change history)
     // ──────────────────────────────────────────────────────────────────────────
@@ -95,6 +131,14 @@ public class DataManagementController {
 
         String userId = authenticatedUserService.resolveUserId(userDetails);
         return ResponseEntity.ok(dataManagementService.getActiveExpenses(userId));
+    }
+
+    @GetMapping("/expenses/deleted")
+    public ResponseEntity<List<Expense>> getDeletedExpenses(
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        String userId = authenticatedUserService.resolveUserId(userDetails);
+        return ResponseEntity.ok(dataManagementService.getDeletedExpenses(userId));
     }
 
     @GetMapping("/changes/history")

@@ -306,7 +306,7 @@ public class NNTipGenerator {
     public SavingTipDTO generateAnomalyTip(String userId, double confidence) {
         if (confidence < MIN_CONFIDENCE) return null;
 
-        List<Expense> allExpenses    = expenseRepository.findByUserId(userId);
+        List<Expense> allExpenses    = expenseRepository.findByUserIdAndIsDeletedFalse(userId);
         List<Expense> recentExpenses = getMonthlyExpenses(userId, YearMonth.now());
         if (recentExpenses.isEmpty()) return null;
 
@@ -519,7 +519,7 @@ public class NNTipGenerator {
     }
 
     private List<Expense> getMonthlyExpenses(String userId, YearMonth month) {
-        return expenseRepository.findByUserIdAndDateBetween(
+        return expenseRepository.findByUserIdAndIsDeletedFalseAndDateBetween(
                 userId, month.atDay(1), month.atEndOfMonth());
     }
 

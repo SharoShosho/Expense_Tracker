@@ -37,8 +37,8 @@ class NNTipGeneratorTest {
         ReflectionTestUtils.setField(generator, "budgetRepository",  budgetRepository);
 
         // Default: no expenses, no budgets
-        when(expenseRepository.findByUserId(eq(USER_ID))).thenReturn(List.of());
-        when(expenseRepository.findByUserIdAndDateBetween(eq(USER_ID), any(LocalDate.class), any(LocalDate.class)))
+        when(expenseRepository.findByUserIdAndIsDeletedFalse(eq(USER_ID))).thenReturn(List.of());
+        when(expenseRepository.findByUserIdAndIsDeletedFalseAndDateBetween(eq(USER_ID), any(LocalDate.class), any(LocalDate.class)))
                 .thenReturn(List.of());
         when(budgetRepository.findByUserIdOrderByCategoryAsc(eq(USER_ID))).thenReturn(List.of());
     }
@@ -91,7 +91,7 @@ class NNTipGeneratorTest {
 
         // Need expenses for spending pattern tip to generate content
         List<Expense> expenses = List.of(buildExpense("Food", 300));
-        when(expenseRepository.findByUserIdAndDateBetween(eq(USER_ID), any(), any()))
+        when(expenseRepository.findByUserIdAndIsDeletedFalseAndDateBetween(eq(USER_ID), any(), any()))
                 .thenReturn(expenses);
 
         List<SavingTipDTO> tips = generator.generateTipsFromNNOutput(USER_ID, nnOutput);
@@ -110,7 +110,7 @@ class NNTipGeneratorTest {
     @Test
     void generateSpendingPatternTip_returnsTipAboveThreshold() {
         List<Expense> expenses = List.of(buildExpense("Food", 500));
-        when(expenseRepository.findByUserIdAndDateBetween(eq(USER_ID), any(), any()))
+        when(expenseRepository.findByUserIdAndIsDeletedFalseAndDateBetween(eq(USER_ID), any(), any()))
                 .thenReturn(expenses);
 
         SavingTipDTO tip = generator.generateSpendingPatternTip(USER_ID, 0.75);
@@ -123,7 +123,7 @@ class NNTipGeneratorTest {
     @Test
     void generateSpendingPatternTip_priorityMatchesConfidence() {
         List<Expense> expenses = List.of(buildExpense("Food", 200));
-        when(expenseRepository.findByUserIdAndDateBetween(eq(USER_ID), any(), any()))
+        when(expenseRepository.findByUserIdAndIsDeletedFalseAndDateBetween(eq(USER_ID), any(), any()))
                 .thenReturn(expenses);
 
         SavingTipDTO high   = generator.generateSpendingPatternTip(USER_ID, 0.8);
@@ -149,7 +149,7 @@ class NNTipGeneratorTest {
         List<Expense> expenses = List.of(
                 buildExpenseOnDate("Food", 100, LocalDate.now().with(java.time.DayOfWeek.MONDAY)),
                 buildExpenseOnDate("Transport", 200, LocalDate.now().with(java.time.DayOfWeek.SATURDAY)));
-        when(expenseRepository.findByUserIdAndDateBetween(eq(USER_ID), any(), any()))
+        when(expenseRepository.findByUserIdAndIsDeletedFalseAndDateBetween(eq(USER_ID), any(), any()))
                 .thenReturn(expenses);
 
         SavingTipDTO tip = generator.generateBehavioralTip(USER_ID, 0.7);
@@ -173,7 +173,7 @@ class NNTipGeneratorTest {
         List<Expense> expenses = List.of(
                 buildExpense("Entertainment", 1000),
                 buildExpense("Food", 100));
-        when(expenseRepository.findByUserIdAndDateBetween(eq(USER_ID), any(), any()))
+        when(expenseRepository.findByUserIdAndIsDeletedFalseAndDateBetween(eq(USER_ID), any(), any()))
                 .thenReturn(expenses);
 
         SavingTipDTO tip = generator.generateBenchmarkingTip(USER_ID, 0.75);
@@ -194,7 +194,7 @@ class NNTipGeneratorTest {
     @Test
     void generatePredictionTip_returnsTipWithHistory() {
         // Return non-zero for multiple month queries
-        when(expenseRepository.findByUserIdAndDateBetween(eq(USER_ID), any(), any()))
+        when(expenseRepository.findByUserIdAndIsDeletedFalseAndDateBetween(eq(USER_ID), any(), any()))
                 .thenReturn(List.of(buildExpense("Food", 300)));
 
         SavingTipDTO tip = generator.generatePredictionTip(USER_ID, 0.7);
@@ -216,7 +216,7 @@ class NNTipGeneratorTest {
         List<Expense> expenses = List.of(
                 buildExpense("Food", 500),
                 buildExpense("Transport", 200));
-        when(expenseRepository.findByUserIdAndDateBetween(eq(USER_ID), any(), any()))
+        when(expenseRepository.findByUserIdAndIsDeletedFalseAndDateBetween(eq(USER_ID), any(), any()))
                 .thenReturn(expenses);
 
         SavingTipDTO tip = generator.generateCategoryTip(USER_ID, 0.8);
@@ -248,7 +248,7 @@ class NNTipGeneratorTest {
     @Test
     void generateHistoryTip_returnsUrgentTipOnHighTrend() {
         // Simulate increasing monthly totals: 100 → 200 → 300 → 400 → 500 → 600
-        when(expenseRepository.findByUserIdAndDateBetween(eq(USER_ID), any(), any()))
+        when(expenseRepository.findByUserIdAndIsDeletedFalseAndDateBetween(eq(USER_ID), any(), any()))
                 .thenReturn(List.of(buildExpense("Food", 600))); // simplified – all months same
 
         SavingTipDTO tip = generator.generateHistoryTip(USER_ID, 0.9);

@@ -25,28 +25,34 @@ export default function Navigation() {
     setCurrency(nextCurrency)
   }
 
-  const isActive = (path) =>
-    location.pathname === path
+  const navItems = [
+    { to: '/dashboard', label: 'Dashboard', matcher: (pathname) => pathname === '/dashboard' },
+    { to: '/expenses', label: 'Expenses', matcher: (pathname) => pathname.startsWith('/expenses') },
+    { to: '/statistics', label: 'Statistics', matcher: (pathname) => pathname.startsWith('/statistics') },
+    { to: '/budget/setup', label: 'Budgets', matcher: (pathname) => pathname.startsWith('/budget') },
+    { to: '/ai/tips', label: 'AI Tips', matcher: (pathname) => pathname.startsWith('/ai') },
+  ]
+
+  const getLinkClassName = (isItemActive) => (
+    isItemActive
       ? 'text-blue-600 dark:text-blue-400 font-semibold'
       : 'text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400'
+  )
 
   return (
     <nav className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
       <div className="max-w-screen-2xl mx-auto px-3 sm:px-4 lg:px-6 py-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4 w-full md:w-auto">
           <span className="text-lg sm:text-xl font-bold text-blue-600 whitespace-nowrap">💰 Expense Tracker</span>
-          <Link to="/dashboard" className={`${isActive('/dashboard')} text-sm sm:text-base`}>
-            Dashboard
-          </Link>
-          <Link to="/statistics" className={`${isActive('/statistics')} text-sm sm:text-base`}>
-            Statistics
-          </Link>
-          <Link to="/budget/setup" className={`${isActive('/budget/setup')} text-sm sm:text-base`}>
-            Budgets
-          </Link>
-          <Link to="/ai/tips" className={`${isActive('/ai/tips')} text-sm sm:text-base`}>
-            AI Tips
-          </Link>
+          {navItems.map((item) => (
+            <Link
+              key={item.to}
+              to={item.to}
+              className={`${getLinkClassName(item.matcher(location.pathname))} text-sm sm:text-base`}
+            >
+              {item.label}
+            </Link>
+          ))}
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3 md:justify-end">
           <ThemeToggle />
