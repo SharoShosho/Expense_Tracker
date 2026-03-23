@@ -476,35 +476,34 @@
   margin-bottom: 0.4rem;
 }
 
-/* ---------- Dark mode ---------- */
-@media (prefers-color-scheme: dark) {
-  .ai-card {
-    background: var(--ai-card-bg-dark);
-    border-color: var(--ai-card-border-dark);
-    color: #e2e8f0;
-  }
-
-  .ai-tip-card-HIGH { background: rgba(231, 76, 60, 0.12); }
-  .ai-tip-card-MEDIUM { background: rgba(243, 156, 18, 0.12); }
-  .ai-tip-card-LOW { background: rgba(39, 174, 96, 0.12); }
-
-  .ai-tip-card h4,
-  .ai-tip-card p,
-  .ai-tip-card ul li { color: #e2e8f0; }
-
-  .ai-section-header h1 { color: #f1f5f9; }
-  .ai-section-header p { color: #94a3b8; }
-
-  .ai-summary-card {
-    background: #1e293b;
-    border-color: #334155;
-  }
-  .ai-summary-card-title { color: #f1f5f9; }
-
-  .ai-compare-table th { background: #1e293b; border-color: #334155; color: #e2e8f0; }
-  .ai-compare-table td { color: #cbd5e1; border-color: #1e293b; }
-
-  .ai-prediction-row { border-color: #334155; }
-  .ai-prediction-month { color: #f1f5f9; }
-  .ai-prediction-amount { color: #f1f5f9; }
+/* ---------- Dark mode (app controlled via html.dark) ---------- */
+.dark .ai-card {
+  background: var(--ai-card-bg-dark);
+  border-color: var(--ai-card-border-dark);
+  color: #e2e8f0;
 }
+
+.dark .ai-tip-card-HIGH { background: rgba(231, 76, 60, 0.12); }
+.dark .ai-tip-card-MEDIUM { background: rgba(243, 156, 18, 0.12); }
+.dark .ai-tip-card-LOW { background: rgba(39, 174, 96, 0.12); }
+
+.dark .ai-tip-card h4,
+.dark .ai-tip-card p,
+.dark .ai-tip-card ul li { color: #e2e8f0; }
+
+.dark .ai-section-header h1 { color: #f1f5f9; }
+.dark .ai-section-header p { color: #94a3b8; }
+
+.dark .ai-summary-card {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.dark .ai-summary-card-title { color: #f1f5f9; }
+
+.dark .ai-compare-table th { background: #1e293b; border-color: #334155; color: #e2e8f0; }
+.dark .ai-compare-table td { color: #cbd5e1; border-color: #1e293b; }
+
+.dark .ai-prediction-row { border-color: #334155; }
+.dark .ai-prediction-month { color: #f1f5f9; }
+.dark .ai-prediction-amount { color: #f1f5f9; }
