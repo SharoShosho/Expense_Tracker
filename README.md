@@ -55,7 +55,7 @@ Backend config is in:
 Important properties:
 
 - `spring.data.mongodb.uri` (MongoDB connection string)
-- `jwt.secret` (set a strong secret in production; can be overridden by `JWT_SECRET`)
+- `jwt.secret` (configured as `jwt.secret=${JWT_SECRET:...}` in `application.properties`; set `JWT_SECRET` in production)
 - `server.port` (default `8080`)
 
 ## Run Locally
