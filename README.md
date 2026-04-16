@@ -55,7 +55,7 @@ Backend config is in:
 Important properties:
 
 - `spring.data.mongodb.uri` (MongoDB connection string)
-- `jwt.secret` (configured as `jwt.secret=${JWT_SECRET:...}` in `application.properties`; set `JWT_SECRET` in production)
+- `jwt.secret` (set the `JWT_SECRET` environment variable in production)
 - `server.port` (default `8080`)
 
 ## Run Locally
@@ -95,12 +95,10 @@ By default, the frontend proxies `/api/*` to `http://localhost:8080` (see `front
 
 ```bash
 # Backend tests
-cd backend
-mvn test
+(cd backend && mvn test)
 
 # Frontend build
-cd frontend
-npm run build
+(cd frontend && npm run build)
 ```
 
 ## Additional Docs
