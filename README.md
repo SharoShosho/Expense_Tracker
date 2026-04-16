@@ -55,7 +55,7 @@ Backend config is in:
 Important properties:
 
 - `spring.data.mongodb.uri` (MongoDB connection string)
-- `jwt.secret` (set the `JWT_SECRET` environment variable in production)
+- `jwt.secret` (set the `JWT_SECRET` environment variable in production and avoid hardcoding secrets)
 - `server.port` (default `8080`)
 
 ## Run Locally
@@ -91,7 +91,7 @@ By default, the frontend proxies `/api/*` to `http://localhost:8080` (see `front
 - `/api/ai/train/*` - model training endpoints
 - `/api/ai/tips/feedback` - tip feedback/personalization
 
-## Validation Commands
+## Validation Commands (Currently Available)
 
 ```bash
 # Backend tests
@@ -100,6 +100,8 @@ By default, the frontend proxies `/api/*` to `http://localhost:8080` (see `front
 # Frontend build
 (cd frontend && npm run build)
 ```
+
+> Note: there is currently no frontend test script defined in `frontend/package.json`.
 
 ## Additional Docs
 
