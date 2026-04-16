@@ -50,7 +50,7 @@ Expense_Tracker/
 
 Backend config is in:
 
-`/home/runner/work/Expense_Tracker/Expense_Tracker/backend/src/main/resources/application.properties`
+`backend/src/main/resources/application.properties`
 
 Important properties:
 
@@ -63,7 +63,7 @@ Important properties:
 ### 1) Start Backend
 
 ```bash
-cd /home/runner/work/Expense_Tracker/Expense_Tracker/backend
+cd backend
 mvn spring-boot:run
 ```
 
@@ -72,7 +72,7 @@ Backend runs at: `http://localhost:8080`
 ### 2) Start Frontend
 
 ```bash
-cd /home/runner/work/Expense_Tracker/Expense_Tracker/frontend
+cd frontend
 npm install
 npm run dev
 ```
@@ -95,11 +95,11 @@ By default, the frontend proxies `/api/*` to `http://localhost:8080` (see `front
 
 ```bash
 # Backend tests
-cd /home/runner/work/Expense_Tracker/Expense_Tracker/backend
+cd backend
 mvn test
 
 # Frontend build
-cd /home/runner/work/Expense_Tracker/Expense_Tracker/frontend
+cd frontend
 npm run build
 ```
 
