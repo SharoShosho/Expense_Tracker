@@ -39,7 +39,7 @@ The server starts on `http://localhost:8080`.
 Set allowed origin patterns in `application.properties`:
 
 ```properties
-spring.web.cors.allowed-origin-patterns=http://localhost:*,http://127.0.0.1:*,https://sharoshosho.github.io
+spring.web.cors.allowed-origin-patterns=${ALLOWED_CORS_ORIGINS:http://localhost:*,http://127.0.0.1:*,https://sharoshosho.github.io}
 ```
 
 ## API Endpoints

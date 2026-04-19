@@ -30,7 +30,7 @@ import java.util.List;
 @EnableWebSecurity
 public class SecurityConfig {
 
-    @Value("${spring.web.cors.allowed-origin-patterns:http://localhost:*,http://127.0.0.1:*,https://sharoshosho.github.io}")
+    @Value("${spring.web.cors.allowed-origin-patterns:http://localhost:*,http://127.0.0.1:*}")
     private String allowedOriginPatterns;
 
     @Autowired

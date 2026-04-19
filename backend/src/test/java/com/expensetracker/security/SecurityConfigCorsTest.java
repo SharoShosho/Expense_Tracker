@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SecurityConfigCorsTest {
 
     @Test
-    void corsConfigurationAllowsGithubPagesAndPreflightMethods() {
+    void corsConfigurationAllowsGitHubPagesAndPreflightMethods() {
         SecurityConfig securityConfig = new SecurityConfig();
         ReflectionTestUtils.setField(
                 securityConfig,

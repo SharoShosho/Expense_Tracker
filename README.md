@@ -57,6 +57,7 @@ Important properties:
 - `spring.data.mongodb.uri` (MongoDB connection string)
 - `jwt.secret` (set via `JWT_SECRET` environment variable; avoid hardcoding)
 - `server.port` (default `8080`)
+- `spring.web.cors.allowed-origin-patterns` (override via `ALLOWED_CORS_ORIGINS` for deployment-specific frontend origins)
 
 ## Run Locally
 

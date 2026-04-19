@@ -33,7 +33,7 @@ For production builds (for example GitHub Pages), set:
 
 - `VITE_API_BASE_URL=https://your-backend-domain/api`
 
-> GitHub Pages deployments require an **absolute** `VITE_API_BASE_URL`. Do not use a relative `/api` value in production.
+> GitHub Pages deployments require an **absolute** `VITE_API_BASE_URL` (must start with `http://` or `https://`). Do not use a relative `/api` value in production.
 
 ### 3. Start the development server
 

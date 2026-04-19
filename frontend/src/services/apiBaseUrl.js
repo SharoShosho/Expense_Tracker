@@ -1,5 +1,6 @@
 const DEV_API_BASE_URL = '/api'
-const INVALID_GITHUB_PAGES_FALLBACK = 'https://invalid-api.local/api'
+const ABSOLUTE_HTTP_URL_PATTERN = /^https?:\/\//i
+const GITHUB_PAGES_HOST_PATTERN = /(^|\.)github\.io$/i
 
 const normalizeBaseUrl = (url) => {
   if (!url) return ''
@@ -7,19 +8,23 @@ const normalizeBaseUrl = (url) => {
 }
 
 const isGitHubPagesHost = () =>
-  typeof window !== 'undefined' && window.location.hostname.endsWith('github.io')
+  typeof window !== 'undefined' && GITHUB_PAGES_HOST_PATTERN.test(window.location.hostname)
 
 const isRelativePath = (url) => url.startsWith('/')
+const isAbsoluteHttpUrl = (url) => ABSOLUTE_HTTP_URL_PATTERN.test(url)
 
 export const resolveApiBaseUrl = () => {
   const configuredBaseUrl = normalizeBaseUrl(import.meta.env.VITE_API_BASE_URL)
 
   if (configuredBaseUrl) {
-    if (import.meta.env.PROD && isGitHubPagesHost() && isRelativePath(configuredBaseUrl)) {
-      console.error(
-        'VITE_API_BASE_URL must be an absolute backend URL in production when deployed on GitHub Pages.'
+    if (
+      import.meta.env.PROD &&
+      isGitHubPagesHost() &&
+      (isRelativePath(configuredBaseUrl) || !isAbsoluteHttpUrl(configuredBaseUrl))
+    ) {
+      throw new Error(
+        'VITE_API_BASE_URL must be an absolute backend URL (starting with http:// or https://) in production when deployed on GitHub Pages.'
       )
-      return INVALID_GITHUB_PAGES_FALLBACK
     }
     return configuredBaseUrl
   }
@@ -29,10 +34,9 @@ export const resolveApiBaseUrl = () => {
   }
 
   if (isGitHubPagesHost()) {
-    console.error(
-      'Missing VITE_API_BASE_URL for GitHub Pages production deployment. Set it to your backend URL, for example https://your-backend.example.com/api.'
+    throw new Error(
+      'Missing VITE_API_BASE_URL for GitHub Pages production deployment. Set an absolute backend URL (starting with http:// or https://), for example https://your-backend.example.com/api.'
     )
-    return INVALID_GITHUB_PAGES_FALLBACK
   }
 
   return DEV_API_BASE_URL
