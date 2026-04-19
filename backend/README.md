@@ -34,6 +34,14 @@ mvn spring-boot:run
 
 The server starts on `http://localhost:8080`.
 
+### 4. Configure CORS origins (for frontend deployments)
+
+Set allowed origin patterns in `application.properties`:
+
+```properties
+spring.web.cors.allowed-origin-patterns=${ALLOWED_CORS_ORIGINS:http://localhost:*,http://127.0.0.1:*,https://sharoshosho.github.io}
+```
+
 ## API Endpoints
 
 ### Authentication
