@@ -110,7 +110,7 @@ Repository includes a workflow at:
 To enable deployment:
 
 1. Go to **Settings → Pages** and set **Source** to **GitHub Actions**.
-2. (Recommended) Add repository variable `VITE_API_BASE_URL` with your deployed backend URL (for example `https://your-backend.example.com/api`).
+2. (Recommended) Add repository variable `VITE_API_BASE_URL` in **Settings → Secrets and variables → Actions → Variables** with your deployed backend URL (for example `https://your-backend.example.com/api`).
 3. Push to `main` or run the workflow manually from the **Actions** tab.
 
 After deployment, frontend is available at:
