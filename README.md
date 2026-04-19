@@ -115,7 +115,7 @@ To enable deployment:
 
 After deployment, frontend is available at:
 
-`https://<github-username>.github.io/Expense_Tracker/`
+`https://<github-username>.github.io/<repository-name>/`
 
 
 ## Additional Docs
