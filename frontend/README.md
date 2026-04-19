@@ -17,7 +17,7 @@ npm install
 
 ### 2. Configure API URL
 
-The frontend proxies API requests to `http://localhost:8080` by default (configured in `vite.config.js`).
+For local development, the frontend proxies API requests to `http://localhost:8080` by default (configured in `vite.config.js`).
 
 If your backend runs on a different port, update `vite.config.js`:
 ```js
@@ -28,6 +28,10 @@ proxy: {
   },
 },
 ```
+
+For production builds (for example GitHub Pages), set:
+
+- `VITE_API_BASE_URL=https://your-backend-domain/api`
 
 ### 3. Start the development server
 

@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom'
+import { createHashRouter, Navigate, RouterProvider } from 'react-router-dom'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import Dashboard from './pages/Dashboard'
@@ -20,7 +20,7 @@ function Protected({ children }) {
   return <ProtectedRoute>{children}</ProtectedRoute>
 }
 
-const router = createBrowserRouter(
+const router = createHashRouter(
   [
     { path: '/login', element: <LoginPage /> },
     { path: '/register', element: <RegisterPage /> },

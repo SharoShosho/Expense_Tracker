@@ -101,6 +101,22 @@ By default, the frontend proxies `/api/*` to `http://localhost:8080` (see `front
 (cd frontend && npm run build)
 ```
 
+## Deploy Frontend to GitHub Pages
+
+Repository includes a workflow at:
+
+`.github/workflows/deploy-frontend-pages.yml`
+
+To enable deployment:
+
+1. Go to **Settings → Pages** and set **Source** to **GitHub Actions**.
+2. (Recommended) Add repository variable `VITE_API_BASE_URL` in **Settings → Secrets and variables → Actions → Variables** with your deployed backend URL (for example `https://your-backend.example.com/api`).
+3. Push to `main` or run the workflow manually from the **Actions** tab.
+
+After deployment, frontend is available at:
+
+`https://<github-username>.github.io/<repository-name>/`
+
 
 ## Additional Docs
 
