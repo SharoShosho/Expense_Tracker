@@ -33,6 +33,8 @@ For production builds (for example GitHub Pages), set:
 
 - `VITE_API_BASE_URL=https://your-backend-domain/api`
 
+> GitHub Pages deployments require an **absolute** `VITE_API_BASE_URL`. Do not use a relative `/api` value in production.
+
 ### 3. Start the development server
 
 ```bash
@@ -40,6 +42,8 @@ npm run dev
 ```
 
 The app opens at `http://localhost:5173`.
+
+Routing on GitHub Pages uses hash-based URLs (`#/login`, `#/dashboard`, etc.), so refresh/deep links continue to work without a custom `404.html` fallback.
 
 ## Build for Production
 
